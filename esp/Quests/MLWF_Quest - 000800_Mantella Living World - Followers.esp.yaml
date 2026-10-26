@@ -1,0 +1,16 @@
+FormKey: 000800:Mantella Living World - Followers.esp
+EditorID: MLWF_Quest
+VirtualMachineAdapter:
+  Scripts:
+  - Name: MLWF_Main
+    Properties:
+    - MutagenObjectType: ScriptObjectProperty
+      Name: PlayerRef
+      Object: 000014:Skyrim.esm
+  FileName: ''
+Name:
+  TargetLanguage: English
+  Value: Mantella Living World - Followers
+Flags:
+- StartGameEnabled
+NextAliasID: 0

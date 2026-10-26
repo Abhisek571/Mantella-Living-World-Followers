@@ -1,0 +1,31 @@
+{
+    "identifier": "mantella_mlw_wait",
+    "name": "WaitHere",
+    "description": "Make follower(s) wait at their current spot.",
+    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow and Wait.",
+    "key": "WaitHere",
+    "enabled": true,
+    "parameters": {
+        "source": {
+            "type": "array",
+            "description": "The NPC(s) this applies to.",
+            "items": {
+                "type": "string"
+            },
+            "scope": "conversation"
+        }
+    },
+    "required": [
+        "source"
+    ],
+    "prompt": "If you follow the player and they ask you to wait, stay or hold here, begin your response with '{key}:'",
+    "allowed_games": [
+        "skyrim"
+    ],
+    "requires_response": false,
+    "is-interrupting": false,
+    "allow_repeat": false,
+    "one-on-one": true,
+    "multi-npc": true,
+    "radiant": false
+}

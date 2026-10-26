@@ -1,0 +1,31 @@
+{
+    "identifier": "mantella_mlw_wear",
+    "name": "WearThis",
+    "description": "Open the trade window so the player can hand clothes to wear; the NPC keeps them as an outfit.",
+    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow and Wait.",
+    "key": "WearThis",
+    "enabled": true,
+    "parameters": {
+        "source": {
+            "type": "array",
+            "description": "The NPC(s) this applies to.",
+            "items": {
+                "type": "string"
+            },
+            "scope": "conversation"
+        }
+    },
+    "required": [
+        "source"
+    ],
+    "prompt": "If the player wants to give you clothes or armor to wear, or asks you to change into something they hand you, begin your response with '{key}:'",
+    "allowed_games": [
+        "skyrim"
+    ],
+    "requires_response": false,
+    "is-interrupting": false,
+    "allow_repeat": false,
+    "one-on-one": true,
+    "multi-npc": true,
+    "radiant": false
+}

@@ -1,0 +1,18 @@
+{
+    "identifier": "mantella_mlw_follow_all",
+    "name": "EveryoneFollow",
+    "description": "Make the whole party follow the player again.",
+    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow and Wait.",
+    "key": "EveryoneFollow",
+    "enabled": true,
+    "prompt": "If the player tells the whole party or everyone to follow them again, begin your response with '{key}:'",
+    "allowed_games": [
+        "skyrim"
+    ],
+    "requires_response": false,
+    "is-interrupting": false,
+    "allow_repeat": false,
+    "one-on-one": true,
+    "multi-npc": true,
+    "radiant": false
+}

@@ -1,0 +1,10 @@
+ModKey: Mantella Living World - Followers.esp
+GameRelease: SkyrimSE
+ModHeader:
+  Flags:
+  - Small
+  Author: itsPigeon2000
+  Description: Mantella Living World - Followers. Mantella actions for Nether's Follower Framework.
+  MasterReferences:
+  - Master: Skyrim.esm
+    FileSize: 0
