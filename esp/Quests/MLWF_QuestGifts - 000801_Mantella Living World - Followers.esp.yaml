@@ -1,0 +1,23 @@
+FormKey: 000801:Mantella Living World - Followers.esp
+EditorID: MLWF_QuestGifts
+VirtualMachineAdapter:
+  Scripts: []
+  FileName: ''
+  Aliases:
+  - Property:
+      Name: ''
+      Object: 000801:Mantella Living World - Followers.esp
+      Alias: 0
+    Scripts:
+    - Name: MLWF_GiftsAlias
+Name:
+  TargetLanguage: English
+  Value: Mantella Living World - Followers gifts
+Flags:
+- StartGameEnabled
+NextAliasID: 1
+Aliases:
+- Name: PlayerAlias
+  Flags: []
+  ForcedReference: 000014:Skyrim.esm
+  VoiceTypes: Null

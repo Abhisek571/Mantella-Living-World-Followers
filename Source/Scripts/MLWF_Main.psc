@@ -1,7 +1,9 @@
 Scriptname MLWF_Main extends Quest
 {Mantella Living World - Followers: Mantella actions for Nether's Follower Framework (NFF). NPCs join or leave the
-party, wait, follow, stay out of fights or fight freely, and wear clothes the player hands them. Every order goes
-through NFF's own commands, so NFF's menu always shows the same state.}
+party, wait, follow, stay out of fights or fight freely, and wear clothes the player hands them. They also attack,
+keep their distance, change combat style or role, relax, sit, loot, carry torches and gather. Every order goes
+through NFF's own commands, so NFF's menu always shows the same state. At conversation start each NPC is told
+which of the clothes they wear came from the player.}
 
 Actor Property PlayerRef Auto
 
@@ -18,8 +20,21 @@ int Property ORDER_FOLLOW = 3 AutoReadOnly
 int Property ORDER_PASSIVE = 4 AutoReadOnly
 int Property ORDER_AGGRESSIVE = 5 AutoReadOnly
 int Property ORDER_WEAR = 6 AutoReadOnly
+int Property ORDER_ATTACK = 7 AutoReadOnly
+int Property ORDER_BEHIND = 8 AutoReadOnly
+int Property ORDER_DISTANCE = 9 AutoReadOnly
+int Property ORDER_STYLE = 10 AutoReadOnly
+int Property ORDER_ROLE = 11 AutoReadOnly
+int Property ORDER_SIT = 12 AutoReadOnly
+int Property ORDER_TORCH = 13 AutoReadOnly
+
+; Enemies are looked for this far around the player; the party is fetched only when all are farther than WARP_DISTANCE.
+float Property SCAN_RADIUS = 4096.0 AutoReadOnly
+float Property WARP_DISTANCE = 2000.0 AutoReadOnly
 
 bool busy = false
+; Testing: the last line sent to Mantella.
+string lastEvent = ""
 ; The NPC whose inventory is open for "wear this", and the armor she had before.
 Actor wearActor = None
 Form[] wearForms
@@ -48,6 +63,22 @@ Function Register()
 	RegisterForModEvent(PREFIX + "mantella_mlw_wait_all", "OnWaitAllLegacy")
 	RegisterForModEvent(ADVANCED + "mantella_mlw_follow_all", "OnFollowAllAdvanced")
 	RegisterForModEvent(PREFIX + "mantella_mlw_follow_all", "OnFollowAllLegacy")
+	RegisterForModEvent(ADVANCED + "mantella_mlw_attack_target", "OnAttackAdvanced")
+	RegisterForModEvent(PREFIX + "mantella_mlw_attack_target", "OnAttackLegacy")
+	RegisterForModEvent(ADVANCED + "mantella_mlw_stay_behind", "OnBehindAdvanced")
+	RegisterForModEvent(PREFIX + "mantella_mlw_stay_behind", "OnBehindLegacy")
+	RegisterForModEvent(ADVANCED + "mantella_mlw_follow_distance", "OnDistanceAdvanced")
+	RegisterForModEvent(ADVANCED + "mantella_mlw_combat_style", "OnStyleAdvanced")
+	RegisterForModEvent(ADVANCED + "mantella_mlw_role", "OnRoleAdvanced")
+	RegisterForModEvent(ADVANCED + "mantella_mlw_sit_there", "OnSitAdvanced")
+	RegisterForModEvent(PREFIX + "mantella_mlw_sit_there", "OnSitLegacy")
+	RegisterForModEvent(ADVANCED + "mantella_mlw_torch", "OnTorchAdvanced")
+	RegisterForModEvent(ADVANCED + "mantella_mlw_relax_here", "OnRelaxAdvanced")
+	RegisterForModEvent(PREFIX + "mantella_mlw_relax_here", "OnRelaxLegacy")
+	RegisterForModEvent(ADVANCED + "mantella_mlw_loot", "OnLootAdvanced")
+	RegisterForModEvent(ADVANCED + "mantella_mlw_gather_party", "OnGatherAdvanced")
+	RegisterForModEvent(PREFIX + "mantella_mlw_gather_party", "OnGatherLegacy")
+	RegisterForModEvent("MantellaConversation_NPC_Added", "OnNpcAdded")
 	RegisterForModEvent("MantellaConversation_Started", "OnConversationStarted")
 	RegisterForModEvent("MLW_ReportRequest", "OnReportRequest")
 EndFunction
@@ -150,6 +181,59 @@ Event OnFollowAllLegacy(Form akSpeaker)
 	PartyOrder(false)
 EndEvent
 
+; Actions with a choice ("distance", "style", "role", "state") have no legacy handler: without the argument there
+; is nothing to do.
+Event OnAttackAdvanced(Form akSpeaker, Form akConversation, int aiArguments)
+	Orders(ORDER_ATTACK, ResolveSources(akSpeaker, akConversation, aiArguments), SKSE_HTTP.getString(aiArguments, "target", ""))
+EndEvent
+Event OnAttackLegacy(Form akSpeaker)
+	Order(ORDER_ATTACK, akSpeaker as Actor)
+EndEvent
+Event OnBehindAdvanced(Form akSpeaker, Form akConversation, int aiArguments)
+	Orders(ORDER_BEHIND, ResolveSources(akSpeaker, akConversation, aiArguments))
+EndEvent
+Event OnBehindLegacy(Form akSpeaker)
+	Order(ORDER_BEHIND, akSpeaker as Actor)
+EndEvent
+Event OnDistanceAdvanced(Form akSpeaker, Form akConversation, int aiArguments)
+	Orders(ORDER_DISTANCE, ResolveSources(akSpeaker, akConversation, aiArguments), SKSE_HTTP.getString(aiArguments, "distance", ""))
+EndEvent
+Event OnStyleAdvanced(Form akSpeaker, Form akConversation, int aiArguments)
+	Orders(ORDER_STYLE, ResolveSources(akSpeaker, akConversation, aiArguments), SKSE_HTTP.getString(aiArguments, "style", ""))
+EndEvent
+Event OnRoleAdvanced(Form akSpeaker, Form akConversation, int aiArguments)
+	Orders(ORDER_ROLE, ResolveSources(akSpeaker, akConversation, aiArguments), SKSE_HTTP.getString(aiArguments, "role", ""))
+EndEvent
+; One seat, one NPC: the first one named.
+Event OnSitAdvanced(Form akSpeaker, Form akConversation, int aiArguments)
+	Order(ORDER_SIT, ResolveSources(akSpeaker, akConversation, aiArguments)[0])
+EndEvent
+Event OnSitLegacy(Form akSpeaker)
+	Order(ORDER_SIT, akSpeaker as Actor)
+EndEvent
+Event OnTorchAdvanced(Form akSpeaker, Form akConversation, int aiArguments)
+	Orders(ORDER_TORCH, ResolveSources(akSpeaker, akConversation, aiArguments), SKSE_HTTP.getString(aiArguments, "state", ""))
+EndEvent
+; Relaxing, looting and gathering are party-wide in NFF.
+Event OnRelaxAdvanced(Form akSpeaker, Form akConversation, int aiArguments)
+	Relax()
+EndEvent
+Event OnRelaxLegacy(Form akSpeaker)
+	Relax()
+EndEvent
+Event OnLootAdvanced(Form akSpeaker, Form akConversation, int aiArguments)
+	string choice = SKSE_HTTP.getString(aiArguments, "state", "")
+	If choice == "on" || choice == "off"
+		Loot(choice == "on")
+	EndIf
+EndEvent
+Event OnGatherAdvanced(Form akSpeaker, Form akConversation, int aiArguments)
+	Gather()
+EndEvent
+Event OnGatherLegacy(Form akSpeaker)
+	Gather()
+EndEvent
+
 Function PartyOrder(bool abWait)
 	nwsFollowerControllerScript nff = Controller()
 	If !nff
@@ -188,11 +272,11 @@ Actor[] Function ResolveSources(Form akSpeaker, Form akConversation, int aiArgum
 	Return result
 EndFunction
 
-Function Orders(int aiOrder, Actor[] akActors)
+Function Orders(int aiOrder, Actor[] akActors, string asOption = "")
 	int i = 0
 	While i < akActors.Length
 		If akActors[i]
-			Order(aiOrder, akActors[i])
+			Order(aiOrder, akActors[i], asOption)
 		EndIf
 		i += 1
 	EndWhile
@@ -202,7 +286,8 @@ EndFunction
 ; Orders
 ; ---------------------------------------------------------------------------
 
-Function Order(int aiOrder, Actor akActor)
+; asOption: the action's choice (distance, style, role, torch on/off) or, for an attack, the target's name.
+Function Order(int aiOrder, Actor akActor, string asOption = "")
 	If !akActor || akActor == PlayerRef || akActor.IsDead()
 		Return
 	EndIf
@@ -214,7 +299,7 @@ Function Order(int aiOrder, Actor akActor)
 	string name = akActor.GetDisplayName()
 	MLW_Hub hub = Hub()
 	If hub
-		hub.Log("followers", OrderName(aiOrder) + " for " + name)
+		hub.Log("followers", OrderName(aiOrder) + " " + asOption + " for " + name)
 	EndIf
 	If aiOrder == ORDER_JOIN
 		Lock()
@@ -234,6 +319,24 @@ Function Order(int aiOrder, Actor akActor)
 		Behave(nff, akActor, aiOrder == ORDER_PASSIVE)
 	ElseIf aiOrder == ORDER_WEAR
 		OpenForClothes(akActor)
+	ElseIf aiOrder == ORDER_ATTACK
+		Attack(nff, akActor, asOption)
+	ElseIf aiOrder == ORDER_BEHIND
+		If akActor.GetActorValue("WaitingForPlayer") > 0
+			nff.FollowerFollowMe(akActor, 0)
+		EndIf
+		nff.BehindMe(akActor)
+		Debug.Notification(name + " stays behind you.")
+	ElseIf aiOrder == ORDER_DISTANCE
+		FollowDistance(nff, akActor, asOption)
+	ElseIf aiOrder == ORDER_STYLE
+		CombatStyle(nff, akActor, asOption)
+	ElseIf aiOrder == ORDER_ROLE
+		Role(nff, akActor, asOption)
+	ElseIf aiOrder == ORDER_SIT
+		Sit(nff, akActor)
+	ElseIf aiOrder == ORDER_TORCH
+		Torch(nff, akActor, asOption)
 	EndIf
 EndFunction
 
@@ -290,6 +393,343 @@ Function Behave(nwsFollowerControllerScript akNff, Actor akActor, bool abPassive
 	EndIf
 	akActor.EvaluatePackage()
 EndFunction
+
+; Attack: the enemy named in "target", else the actor the player points at, else the nearest enemy. Someone who is no
+; enemy (not hostile to the player and not fighting the party) is refused, and the NPCs are told why.
+Function Attack(nwsFollowerControllerScript akNff, Actor akActor, string asTarget)
+	string name = akActor.GetDisplayName()
+	Actor target = FindTarget(akNff, akActor, asTarget)
+	If !target
+		Tell(name + " sees no enemy to attack.", name + " sees no enemy to attack.")
+		Return
+	EndIf
+	string targetName = target.GetDisplayName()
+	If target.IsDead()  ; the scan takes a moment; someone else may have killed it meanwhile
+		Tell(targetName + " is already dead.", targetName + " is already dead; " + name + " has nobody to attack.")
+		Return
+	EndIf
+	If !IsEnemy(akNff, target)
+		Tell(name + " will not attack " + targetName + ".", name + " refuses to attack " + targetName + ", who is not an enemy.")
+		Return
+	EndIf
+	akActor.StartCombat(target)
+	Debug.Notification(name + " attacks " + targetName + ".")
+EndFunction
+
+Actor Function FindTarget(nwsFollowerControllerScript akNff, Actor akActor, string asTarget)
+	Actor[] nearby = MiscUtil.ScanCellNPCs(PlayerRef, SCAN_RADIUS, None, true)
+	Actor named = None
+	Actor nearest = None
+	float nearestDistance = 0.0
+	int i = 0
+	While i < nearby.Length
+		Actor other = nearby[i]
+		If other && other != akActor && other != PlayerRef
+			bool enemy = IsEnemy(akNff, other)
+			; String comparison is case-insensitive in Papyrus. A hostile namesake wins over a friendly one.
+			If asTarget != "" && other.GetDisplayName() == asTarget && (!named || enemy)
+				named = other
+			EndIf
+			If enemy
+				float distance = other.GetDistance(PlayerRef)
+				If !nearest || distance < nearestDistance
+					nearest = other
+					nearestDistance = distance
+				EndIf
+			EndIf
+		EndIf
+		i += 1
+	EndWhile
+	If named
+		Return named
+	EndIf
+	Actor aimed = Game.GetCurrentCrosshairRef() as Actor
+	If aimed && aimed != akActor && aimed != PlayerRef && !aimed.IsDead()
+		Return aimed
+	EndIf
+	Return nearest
+EndFunction
+
+bool Function IsEnemy(nwsFollowerControllerScript akNff, Actor akActor)
+	If akActor == PlayerRef || akActor.IsDead() || akActor.IsPlayerTeammate() || InParty(akNff, akActor)
+		Return false
+	ElseIf akActor.IsHostileToActor(PlayerRef)
+		Return true
+	EndIf
+	Actor fighting = akActor.GetCombatTarget()
+	Return fighting && (fighting == PlayerRef || InParty(akNff, fighting))
+EndFunction
+
+; NFF's follow range: faction rank 1 close, 0 medium, 2 far (NFF menu "Set Follow Range").
+Function FollowDistance(nwsFollowerControllerScript akNff, Actor akActor, string asDistance)
+	string name = akActor.GetDisplayName()
+	int range = -1
+	If asDistance == "near"
+		range = 1
+	ElseIf asDistance == "normal"
+		range = 0
+	ElseIf asDistance == "far"
+		range = 2
+	EndIf
+	If range < 0 || !akNff.varScript
+		Return
+	ElseIf akActor.IsInFaction(akNff.varScript.nwsFF_DefaultFollow)
+		Tell(name + " keeps the default follow package (NFF setting).", name + " keeps the usual follow distance; Nether's Follower Framework is set to the default follow behavior.")
+		Return
+	EndIf
+	akNff.PerformTask(10, akActor, range, akNff.SearchAlias(akActor, 1))
+	Debug.Notification(name + " follows at " + asDistance + " distance.")
+EndFunction
+
+; NFF combat styles (index in its list): 0 Mercenary (melee), 3 Archer (ranged), 6 Wizard (magic). NFF sets them on
+; the actor base, so like NFF's own menu this only works for unique NPCs.
+Function CombatStyle(nwsFollowerControllerScript akNff, Actor akActor, string asStyle)
+	string name = akActor.GetDisplayName()
+	int style = -1
+	If asStyle == "melee"
+		style = 0
+	ElseIf asStyle == "ranged"
+		style = 3
+	ElseIf asStyle == "magic"
+		style = 6
+	EndIf
+	If style < 0 || !akNff.varScript
+		Return
+	ElseIf !akActor.GetActorBase().IsUnique()
+		Tell(name + " can't change combat style (not a unique NPC).", name + " can't change fighting style.")
+		Return
+	ElseIf akActor.IsInFaction(akNff.varScript.nwsFF_DefaultCombat)
+		Tell(name + " keeps the default combat style (NFF setting).", name + " keeps the usual way of fighting; Nether's Follower Framework is set to the default combat style.")
+		Return
+	EndIf
+	akNff.SetCombatST(akNff.SearchAlias(akActor, 1), akActor, 1, style)
+	Debug.Notification(name + " now fights " + asStyle + ".")
+	If style == 3 && !HasBow(akActor)
+		Tell("", name + " has no bow or crossbow to shoot with.")
+	EndIf
+EndFunction
+
+bool Function HasBow(Actor akActor)
+	int i = akActor.GetNumItems()
+	While i > 0
+		i -= 1
+		Weapon item = akActor.GetNthForm(i) as Weapon
+		If item && (item.GetWeaponType() == 7 || item.GetWeaponType() == 9)
+			Return true
+		EndIf
+	EndWhile
+	Return false
+EndFunction
+
+; NFF roles: 0 standard, 1 healer, 2 tank, with the same stamina and magicka limits as NFF's menu.
+Function Role(nwsFollowerControllerScript akNff, Actor akActor, string asRole)
+	string name = akActor.GetDisplayName()
+	int role = -1
+	bool able = true
+	If asRole == "none"
+		role = 0
+	ElseIf asRole == "healer"
+		role = 1
+		able = akActor.GetActorValue("Magicka") >= 80.0 || akActor.GetActorValue("Stamina") >= 50.0
+	ElseIf asRole == "tank"
+		role = 2
+		able = akActor.GetActorValue("Stamina") >= 30.0
+	EndIf
+	If role < 0
+		Return
+	ElseIf !able
+		Tell(name + " can't be a " + asRole + " yet.", name + " is not strong enough yet to be the party's " + asRole + ".")
+		Return
+	EndIf
+	akNff.SetFollowerRole(akActor, role)
+	If role == 0
+		Debug.Notification(name + " has no special role now.")
+	Else
+		Debug.Notification(name + " is now the party's " + asRole + ".")
+	EndIf
+EndFunction
+
+; Sit on the seat the player points at. She waits there afterwards, so she doesn't get up to follow at once.
+Function Sit(nwsFollowerControllerScript akNff, Actor akActor)
+	string name = akActor.GetDisplayName()
+	ObjectReference seat = Game.GetCurrentCrosshairRef()
+	If !seat || !(seat.GetBaseObject() as Furniture)
+		Tell("Look at a seat for " + name + " to sit on.", "There is no seat where the player points for " + name + ".")
+		Return
+	ElseIf seat.IsFurnitureInUse()
+		Tell("That seat is taken.", "The seat the player points at is taken.")
+		Return
+	EndIf
+	akNff.FollowerWaitHere(akActor, 0, 0)
+	seat.Activate(akActor)
+	Tell(name + " sits down there.", name + " sits down and waits there until asked to follow again.")
+EndFunction
+
+; Torch on: NFF gives back the torches it stored; with none stored she takes one from the player. Torch off: NFF
+; takes her torches and keeps the count.
+Function Torch(nwsFollowerControllerScript akNff, Actor akActor, string asState)
+	string name = akActor.GetDisplayName()
+	If !akNff.varScript || (asState != "on" && asState != "off")
+		Return
+	EndIf
+	Form torchItem = akNff.varScript.Torch01
+	ReferenceAlias slot = akNff.SearchAlias(akActor, 1)
+	If asState == "off"
+		akNff.TakeTorches(slot)
+		Debug.Notification(name + " puts the torches away.")
+		Return
+	EndIf
+	akNff.GiveTorches(slot)
+	If akActor.GetItemCount(torchItem) == 0
+		If PlayerRef.GetItemCount(torchItem) == 0
+			Tell(name + " has no torch.", name + " has no torch, and the player has none to give.")
+			Return
+		EndIf
+		PlayerRef.RemoveItem(torchItem, 1, true, akActor)
+	EndIf
+	Debug.Notification(name + " carries a torch in the dark.")
+EndFunction
+
+; Turns on NFF's relax mode: the party relaxes nearby while the player stays put.
+Function Relax()
+	nwsFollowerControllerScript nff = Controller()
+	If !nff || !nff.varScript
+		Return
+	ElseIf nff.varScript.nwsAllowSandbox.GetValue() >= 1.0
+		Tell("", "The party already relaxes nearby whenever the player stays put.")
+		Return
+	EndIf
+	nff.ToggleSandbox()
+	Tell("", "The party relaxes nearby while the player stays put.")
+EndFunction
+
+Function Loot(bool abOn)
+	nwsFollowerControllerScript nff = Controller()
+	If !nff || nff.QueryLooting() == abOn
+		Return
+	EndIf
+	nff.CallLooting(abOn, !abOn, false)
+	If abOn
+		Tell("", "The party loots bodies and containers nearby.")
+	Else
+		Tell("", "The party stops looting.")
+	EndIf
+EndFunction
+
+; Everyone follows. Only when every member is out of sight and farther than WARP_DISTANCE does NFF move them to the
+; player, so nobody pops into view.
+Function Gather()
+	nwsFollowerControllerScript nff = Controller()
+	If !nff
+		Return
+	EndIf
+	Actor[] members = PartyMembers(nff)
+	If !members[0]
+		Tell("You have no party.", "The player has no party to gather.")
+		Return
+	EndIf
+	nff.FollowAll()
+	bool allAway = true
+	int i = 0
+	While i < members.Length && members[i] && allAway
+		allAway = members[i].GetDistance(PlayerRef) > WARP_DISTANCE && !PlayerRef.HasLOS(members[i])
+		i += 1
+	EndWhile
+	If allAway
+		nff.WarpAll()
+		Tell("", "The party catches up with the player.")
+	Else
+		Tell("", "The party gathers around the player.")
+	EndIf
+EndFunction
+
+; Every NFF party member (NFF keeps them in the vanilla follower quest's aliases).
+Actor[] Function PartyMembers(nwsFollowerControllerScript akNff)
+	Actor[] result = new Actor[12]
+	Quest followers = Game.GetFormFromFile(0x0750BA, "Skyrim.esm") as Quest
+	int n = 0
+	int i = 0
+	While followers && i < 12
+		ReferenceAlias slot = followers.GetAlias(i) as ReferenceAlias
+		If slot
+			Actor member = slot.GetActorReference()
+			If member && InParty(akNff, member)
+				result[n] = member
+				n += 1
+			EndIf
+		EndIf
+		i += 1
+	EndWhile
+	Return result
+EndFunction
+
+; ---------------------------------------------------------------------------
+; Default vs given clothes: what an NPC wears is her own choice, except clothes that came from the player.
+; ---------------------------------------------------------------------------
+
+Event OnNpcAdded(Form akActor)
+	CheckClothes(akActor as Actor)
+EndEvent
+
+; Sends "(Vega wears Steel Armor, which CHAD gave her.)" when she wears body, hand, foot or head armor the player
+; handed over, and returns that line ("" = all her own).
+string Function CheckClothes(Actor akActor)
+	If !akActor || akActor == PlayerRef || akActor.IsDead()
+		Return ""
+	EndIf
+	string line = GivenClothesLine(akActor)
+	If line != ""
+		Tell("", line)
+	EndIf
+	Return line
+EndFunction
+
+; Only NPCs the player could have handed clothes: party members, teammates, NPCs with an NFF outfit and close
+; friends (spouse, housecarl). Strangers whose mods dress them from their inventory are left alone.
+string Function GivenClothesLine(Actor akActor)
+	nwsFollowerControllerScript nff = Controller()
+	nwsFollowerSetsScript sets = Sets()
+	bool hasNffOutfit = sets && akActor.IsInFaction(sets.nwsFF_storedFac)
+	If !(hasNffOutfit || akActor.IsPlayerTeammate() || (nff && InParty(nff, akActor)) || akActor.GetRelationshipRank(PlayerRef) >= 3)
+		Return ""
+	EndIf
+	; Given = it once left the player's inventory (MLWF_GiftsAlias). Many follower mods dress their NPC from the
+	; inventory with no outfit record at all, so the outfit can't tell what is her own.
+	; Head (30), hair or hood (31), body (32), hands (33), feet (37). Weapons and jewelry don't count.
+	int[] masks = new int[5]
+	masks[0] = 0x00000001
+	masks[1] = 0x00000002
+	masks[2] = 0x00000004
+	masks[3] = 0x00000008
+	masks[4] = 0x00000080
+	Form[] seen = new Form[5]
+	string names = ""
+	int count = 0
+	int i = 0
+	While i < masks.Length
+		Form item = akActor.GetWornForm(masks[i])
+		If item && seen.Find(item) < 0
+			seen[i] = item
+			If StorageUtil.FormListHas(None, "MLWF_GivenClothes", item)
+				If count > 0
+					names += " and "
+				EndIf
+				names += item.GetName()
+				count += 1
+			EndIf
+		EndIf
+		i += 1
+	EndWhile
+	If count == 0
+		Return ""
+	EndIf
+	string pronoun = "him"
+	If akActor.GetActorBase().GetSex() == 1
+		pronoun = "her"
+	EndIf
+	Return "(" + akActor.GetDisplayName() + " wears " + names + ", which " + PlayerRef.GetDisplayName() + " gave " + pronoun + ".)"
+EndFunction
+
 
 ; ---------------------------------------------------------------------------
 ; Wear this: the player hands over clothes in the trade window; on close she puts on the new pieces and they
@@ -413,7 +853,7 @@ Form[] Function WornArmor(Actor akActor)
 EndFunction
 
 string Function OrderName(int aiOrder)
-	string[] orders = new string[7]
+	string[] orders = new string[14]
 	orders[0] = "join"
 	orders[1] = "leave"
 	orders[2] = "wait"
@@ -421,6 +861,13 @@ string Function OrderName(int aiOrder)
 	orders[4] = "passive"
 	orders[5] = "aggressive"
 	orders[6] = "wear this"
+	orders[7] = "attack"
+	orders[8] = "stay behind"
+	orders[9] = "follow distance"
+	orders[10] = "combat style"
+	orders[11] = "role"
+	orders[12] = "sit there"
+	orders[13] = "torch"
 	Return orders[aiOrder]
 EndFunction
 
@@ -549,6 +996,9 @@ Function Tell(string asNotification, string asEvent)
 	If asNotification != ""
 		Debug.Notification(asNotification)
 	EndIf
+	If asEvent != ""
+		lastEvent = asEvent
+	EndIf
 	int handle = ModEvent.Create("MantellaAddEvent")
 	If handle
 		ModEvent.PushString(handle, asEvent)
@@ -574,5 +1024,17 @@ string Function TestState(Actor akActor)
 	If !nff || !sets
 		Return "no NFF"
 	EndIf
-	Return "party=" + InParty(nff, akActor) + " waiting=" + akActor.GetActorValue("WaitingForPlayer") + " aggression=" + akActor.GetActorValue("Aggression") + " assistance=" + akActor.GetActorValue("Assistance") + " outfitSlot=" + akActor.GetFactionRank(sets.nwsFF_storedFac) + " situation=" + sets.OutfitTypeTarget(akActor)
+	string text = "party=" + InParty(nff, akActor) + " waiting=" + akActor.GetActorValue("WaitingForPlayer") + " aggression=" + akActor.GetActorValue("Aggression") + " assistance=" + akActor.GetActorValue("Assistance") + " outfitSlot=" + akActor.GetFactionRank(sets.nwsFF_storedFac) + " situation=" + sets.OutfitTypeTarget(akActor)
+	nwsFollowerVariableScript vars = nff.varScript
+	If vars
+		text += " range=" + akActor.GetFactionRank(vars.nwsFF_NCRangeFac) + " style=" + akActor.GetFactionRank(vars.nwsFF_CSFac) + " role=" + akActor.GetFactionRank(vars.nwsFF_RoleFac) + " torches=" + akActor.GetItemCount(vars.Torch01) + " relax=" + vars.nwsAllowSandbox.GetValue()
+	EndIf
+	Return text + " looting=" + nff.QueryLooting() + " combat=" + akActor.IsInCombat() + " sit=" + akActor.GetSitState()
+EndFunction
+
+; Testing: the last line sent to Mantella; forgets it.
+string Function TestTakeEvent()
+	string line = lastEvent
+	lastEvent = ""
+	Return line
 EndFunction

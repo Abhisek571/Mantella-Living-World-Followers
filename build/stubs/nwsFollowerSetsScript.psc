@@ -15,6 +15,7 @@ Int Property currentSlot Auto
 ObjectReference Property outfitChest Auto
 Int Property viewMode Auto
 Bool Property isProcessing Auto
+Form[] Property baseOutfits Auto
 Function AddOutfitFaction(Actor myActor, Int myType)
 EndFunction
 Function StoreOriginalOutfit(Int mySlot)

@@ -1,0 +1,32 @@
+{
+    "identifier": "mantella_mlw_loot",
+    "name": "PartyLoot",
+    "description": "Turn the party's looting of bodies and containers nearby on or off.",
+    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow, Wait and Loot.",
+    "key": "PartyLoot",
+    "enabled": true,
+    "lw_gate": "follower",
+    "parameters": {
+        "state": {
+            "type": "string",
+            "enum": [
+                "on",
+                "off"
+            ],
+            "description": "Looting, exactly one of: on, off."
+        }
+    },
+    "required": [
+        "state"
+    ],
+    "prompt": "If the player tells the party to loot the area or to stop looting, begin your response with '{key}:'",
+    "allowed_games": [
+        "skyrim"
+    ],
+    "requires_response": false,
+    "is-interrupting": false,
+    "allow_repeat": false,
+    "one-on-one": true,
+    "multi-npc": true,
+    "radiant": false
+}

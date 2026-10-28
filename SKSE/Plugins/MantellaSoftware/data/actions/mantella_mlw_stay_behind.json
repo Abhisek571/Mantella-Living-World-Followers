@@ -1,0 +1,32 @@
+{
+    "identifier": "mantella_mlw_stay_behind",
+    "name": "StayBehind",
+    "description": "Make follower(s) step in behind the player.",
+    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow and Wait.",
+    "key": "StayBehind",
+    "enabled": true,
+    "lw_gate": "follower",
+    "parameters": {
+        "source": {
+            "type": "array",
+            "description": "The NPC(s) this applies to.",
+            "items": {
+                "type": "string"
+            },
+            "scope": "conversation"
+        }
+    },
+    "required": [
+        "source"
+    ],
+    "prompt": "If the player tells you to get behind them or stay behind them, begin your response with '{key}:'",
+    "allowed_games": [
+        "skyrim"
+    ],
+    "requires_response": false,
+    "is-interrupting": false,
+    "allow_repeat": false,
+    "one-on-one": true,
+    "multi-npc": true,
+    "radiant": false
+}

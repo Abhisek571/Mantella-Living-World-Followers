@@ -1,0 +1,41 @@
+{
+    "identifier": "mantella_mlw_torch",
+    "name": "CarryTorch",
+    "description": "Make follower(s) carry a torch in the dark, or put torches away.",
+    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow and Wait.",
+    "key": "CarryTorch",
+    "enabled": true,
+    "lw_gate": "follower",
+    "parameters": {
+        "source": {
+            "type": "array",
+            "description": "The NPC(s) this applies to.",
+            "items": {
+                "type": "string"
+            },
+            "scope": "conversation"
+        },
+        "state": {
+            "type": "string",
+            "enum": [
+                "on",
+                "off"
+            ],
+            "description": "Torch, exactly one of: on, off."
+        }
+    },
+    "required": [
+        "source",
+        "state"
+    ],
+    "prompt": "If the player asks you to light or carry a torch, or to put your torch away, begin your response with '{key}:'",
+    "allowed_games": [
+        "skyrim"
+    ],
+    "requires_response": false,
+    "is-interrupting": false,
+    "allow_repeat": false,
+    "one-on-one": true,
+    "multi-npc": true,
+    "radiant": false
+}

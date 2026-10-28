@@ -1,0 +1,42 @@
+{
+    "identifier": "mantella_mlw_role",
+    "name": "PartyRole",
+    "description": "Set follower(s) as the party's tank, healer, or no special role.",
+    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow and Wait.",
+    "key": "PartyRole",
+    "enabled": true,
+    "lw_gate": "follower",
+    "parameters": {
+        "source": {
+            "type": "array",
+            "description": "The NPC(s) this applies to.",
+            "items": {
+                "type": "string"
+            },
+            "scope": "conversation"
+        },
+        "role": {
+            "type": "string",
+            "enum": [
+                "tank",
+                "healer",
+                "none"
+            ],
+            "description": "The role, exactly one of: tank, healer, none."
+        }
+    },
+    "required": [
+        "source",
+        "role"
+    ],
+    "prompt": "If the player asks you to be the party's tank or healer, or to drop that role, begin your response with '{key}:'",
+    "allowed_games": [
+        "skyrim"
+    ],
+    "requires_response": false,
+    "is-interrupting": false,
+    "allow_repeat": false,
+    "one-on-one": true,
+    "multi-npc": true,
+    "radiant": false
+}

@@ -14,6 +14,13 @@ write(f'esp/Quests/MLWF_Quest - 000800_{E}.yaml',
       f"FormKey: 000800:{E}\nEditorID: MLWF_Quest\nVirtualMachineAdapter:\n  Scripts:\n  - Name: MLWF_Main\n    Properties:\n"
       f"    - MutagenObjectType: ScriptObjectProperty\n      Name: PlayerRef\n      Object: 000014:Skyrim.esm\n  FileName: ''\n"
       f"Name:\n  TargetLanguage: English\n  Value: Mantella Living World - Followers\nFlags:\n- StartGameEnabled\nNextAliasID: 0\n")
+# Gifts: a player alias that remembers clothes the player hands over. Its own quest, so the alias also fills on
+# saves made before it existed (aliases fill when a quest starts).
+write(f'esp/Quests/MLWF_QuestGifts - 000801_{E}.yaml',
+      f"FormKey: 000801:{E}\nEditorID: MLWF_QuestGifts\nVirtualMachineAdapter:\n  Scripts: []\n  FileName: ''\n"
+      f"  Aliases:\n  - Property:\n      Name: ''\n      Object: 000801:{E}\n      Alias: 0\n    Scripts:\n    - Name: MLWF_GiftsAlias\n"
+      f"Name:\n  TargetLanguage: English\n  Value: Mantella Living World - Followers gifts\nFlags:\n- StartGameEnabled\nNextAliasID: 1\n"
+      f"Aliases:\n- Name: PlayerAlias\n  Flags: []\n  ForcedReference: 000014:Skyrim.esm\n  VoiceTypes: Null\n")
 write('esp/RecordData.yaml', f'ModKey: {E}\nGameRelease: SkyrimSE\nModHeader:\n  Flags:\n  - Small\n  Author: itsPigeon2000\n'
       '  Description: Mantella Living World - Followers. Mantella actions for Nether\'s Follower Framework.\n'
       '  MasterReferences:\n  - Master: Skyrim.esm\n    FileSize: 0\n')
@@ -43,6 +50,8 @@ ACTIONS = [
 ]
 for ident, name, desc, prompt, takes_source in ACTIONS:
     data = {'identifier': f'mantella_mlw_{ident}', 'name': name, 'description': desc, 'note': NOTE, 'key': name, 'enabled': True}
+    if ident != 'join':  # only party members take orders; anyone may be asked to join
+        data['lw_gate'] = 'follower'
     if takes_source:
         data['parameters'] = SOURCE
         data['required'] = ['source']

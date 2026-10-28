@@ -5,6 +5,7 @@
     "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow and Wait.",
     "key": "StayPassive",
     "enabled": true,
+    "lw_gate": "follower",
     "parameters": {
         "source": {
             "type": "array",

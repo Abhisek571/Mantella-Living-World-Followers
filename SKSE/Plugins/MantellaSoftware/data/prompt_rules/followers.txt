@@ -1,0 +1,1 @@
+Clothes {player_name} gave you are from {player_name}; you may say what you think of them.
