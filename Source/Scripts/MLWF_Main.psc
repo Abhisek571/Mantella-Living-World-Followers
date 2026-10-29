@@ -305,10 +305,12 @@ Function Order(int aiOrder, Actor akActor, string asOption = "")
 		Lock()
 		Join(nff, akActor)
 		Unlock()
+		RefreshLivingWorldNpc(akActor)
 	ElseIf !InParty(nff, akActor)
 		Tell(name + " is not in your party.", name + " is not one of the player's followers.")
 	ElseIf aiOrder == ORDER_LEAVE
 		nff.RemoveFollower(akActor, 0, 0)
+		RefreshLivingWorldNpc(akActor)
 	ElseIf aiOrder == ORDER_WAIT
 		nff.FollowerWaitHere(akActor, 0, 0)
 		Debug.Notification(name + " waits here.")
@@ -337,6 +339,15 @@ Function Order(int aiOrder, Actor akActor, string asOption = "")
 		Sit(nff, akActor)
 	ElseIf aiOrder == ORDER_TORCH
 		Torch(nff, akActor, asOption)
+	EndIf
+EndFunction
+
+; After a join or leave mid-talk: the Integration Hub rewrites this NPC's file, so follower actions appear or go.
+Function RefreshLivingWorldNpc(Actor akActor)
+	int handle = ModEvent.Create("MLW_RefreshNpc")
+	If handle
+		ModEvent.PushForm(handle, akActor)
+		ModEvent.Send(handle)
 	EndIf
 EndFunction
 
