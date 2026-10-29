@@ -4,7 +4,7 @@ Talk your followers into things through [Nether's Follower Framework](https://ww
 
 | Action | What it does |
 |---|---|
-| JoinParty / LeaveParty | The NPC joins or leaves your party. Joining first releases them from Mantella's own follower system. If the party is full, they say so |
+| JoinParty / LeaveParty | The NPC joins or leaves your party. Joining first releases them from Mantella's own follower system. If the party is full, they say so. Children, guards, Jarls, stewards and NPCs who already follow you through another framework cannot join, and are told why |
 | WaitHere / FollowMe | That follower waits, or follows again |
 | EveryoneWait / EveryoneFollow | The whole party waits or follows again |
 | GatherParty | The whole party comes to you. They are only teleported if all of them are over 2000 units away and out of sight |
@@ -18,7 +18,7 @@ Talk your followers into things through [Nether's Follower Framework](https://ww
 
 Followers also notice clothes you gave them.
 
-All actions except JoinParty are only offered to followers. EveryoneWait, EveryoneFollow, GatherParty, RelaxHere and PartyLoot always act on the whole party; the rest act on every NPC named in the talk. Every order goes through NFF, so NFF's own menu shows the same state. When a refusal happens, the NPC is told why. Join and leave refresh the NPC's file in the Hub while you talk.
+All actions except JoinParty are only offered to followers (JoinParty is offered to everyone except guards). EveryoneWait, EveryoneFollow, GatherParty, RelaxHere and PartyLoot are refused unless a party member gives them. CombatStyle, PartyRole, FollowDistance, CarryTorch and PartyLoot need Mantella's Advanced Actions on; the other orders work without it. EveryoneWait, EveryoneFollow, GatherParty, RelaxHere and PartyLoot always act on the whole party; the rest act on every NPC named in the talk. Every order goes through NFF, so NFF's own menu shows the same state. When a refusal happens, the NPC is told why. Join and leave refresh the NPC's file in the Hub while you talk.
 
 Requires: [Mantella Living World - Integration Hub](https://github.com/Abhisek571/Mantella-Living-World-Hub) (and with it [Mantella - Direct AI Connect](https://github.com/Abhisek571/Mantella-Anthropic-API), [PapyrusUtil](https://www.nexusmods.com/skyrimspecialedition/mods/13048) and SKSE), [Mantella](https://www.nexusmods.com/skyrimspecialedition/mods/98631) 0.14, [Nether's Follower Framework](https://www.nexusmods.com/skyrimspecialedition/mods/55653). The plugin only has Skyrim as a master, so if the Hub or NFF is missing nothing warns you at load; the actions just do nothing.
 

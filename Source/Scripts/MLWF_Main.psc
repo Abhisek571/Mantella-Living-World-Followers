@@ -168,17 +168,26 @@ Event OnWearLegacy(Form akSpeaker)
 EndEvent
 
 ; Mod events only reach handlers whose parameters match what Mantella sends, hence a pair per action.
+; Party-wide orders come only from a party member: an unhired NPC cannot move the party.
 Event OnWaitAllAdvanced(Form akSpeaker, Form akConversation, int aiArguments)
-	PartyOrder(true)
+	If SpeakerInParty(akSpeaker)
+		PartyOrder(true)
+	EndIf
 EndEvent
 Event OnWaitAllLegacy(Form akSpeaker)
-	PartyOrder(true)
+	If SpeakerInParty(akSpeaker)
+		PartyOrder(true)
+	EndIf
 EndEvent
 Event OnFollowAllAdvanced(Form akSpeaker, Form akConversation, int aiArguments)
-	PartyOrder(false)
+	If SpeakerInParty(akSpeaker)
+		PartyOrder(false)
+	EndIf
 EndEvent
 Event OnFollowAllLegacy(Form akSpeaker)
-	PartyOrder(false)
+	If SpeakerInParty(akSpeaker)
+		PartyOrder(false)
+	EndIf
 EndEvent
 
 ; Actions with a choice ("distance", "style", "role", "state") have no legacy handler: without the argument there
@@ -214,25 +223,51 @@ EndEvent
 Event OnTorchAdvanced(Form akSpeaker, Form akConversation, int aiArguments)
 	Orders(ORDER_TORCH, ResolveSources(akSpeaker, akConversation, aiArguments), SKSE_HTTP.getString(aiArguments, "state", ""))
 EndEvent
-; Relaxing, looting and gathering are party-wide in NFF.
+; Relaxing, looting and gathering are party-wide in NFF, so they too need a party member as the speaker.
 Event OnRelaxAdvanced(Form akSpeaker, Form akConversation, int aiArguments)
-	Relax()
+	If SpeakerInParty(akSpeaker)
+		Relax()
+	EndIf
 EndEvent
 Event OnRelaxLegacy(Form akSpeaker)
-	Relax()
+	If SpeakerInParty(akSpeaker)
+		Relax()
+	EndIf
 EndEvent
 Event OnLootAdvanced(Form akSpeaker, Form akConversation, int aiArguments)
 	string choice = SKSE_HTTP.getString(aiArguments, "state", "")
-	If choice == "on" || choice == "off"
+	If (choice == "on" || choice == "off") && SpeakerInParty(akSpeaker)
 		Loot(choice == "on")
 	EndIf
 EndEvent
 Event OnGatherAdvanced(Form akSpeaker, Form akConversation, int aiArguments)
-	Gather()
+	If SpeakerInParty(akSpeaker)
+		Gather()
+	EndIf
 EndEvent
 Event OnGatherLegacy(Form akSpeaker)
-	Gather()
+	If SpeakerInParty(akSpeaker)
+		Gather()
+	EndIf
 EndEvent
+
+; True when the speaker is a party member (in NFF's party, or a player teammate). Otherwise the NPCs are told why
+; the party-wide order was not given. Without NFF the order functions do nothing anyway.
+bool Function SpeakerInParty(Form akSpeaker)
+	Actor speaker = akSpeaker as Actor
+	nwsFollowerControllerScript nff = Controller()
+	If !nff
+		Return true
+	ElseIf speaker && speaker != PlayerRef && (InParty(nff, speaker) || speaker.IsPlayerTeammate())
+		Return true
+	EndIf
+	string name = "Someone"
+	If speaker
+		name = speaker.GetDisplayName()
+	EndIf
+	Tell(name + " is not in your party.", name + " is not one of the player's followers, so the party does not take orders from them.")
+	Return false
+EndFunction
 
 Function PartyOrder(bool abWait)
 	nwsFollowerControllerScript nff = Controller()
@@ -302,6 +337,11 @@ Function Order(int aiOrder, Actor akActor, string asOption = "")
 		hub.Log("followers", OrderName(aiOrder) + " " + asOption + " for " + name)
 	EndIf
 	If aiOrder == ORDER_JOIN
+		string refusal = JoinRefusal(nff, akActor)
+		If refusal != ""
+			Tell(name + " cannot join your party.", refusal)
+			Return
+		EndIf
 		Lock()
 		Join(nff, akActor)
 		Unlock()
@@ -349,6 +389,40 @@ Function RefreshLivingWorldNpc(Actor akActor)
 		ModEvent.PushForm(handle, akActor)
 		ModEvent.Send(handle)
 	EndIf
+EndFunction
+
+; Why this NPC may not join, as the line Mantella is told; "" when she may. NFF itself only refuses the dead
+; (RecruitFollower), so the checks are ours: children, guards, the Jarl and the steward keep their place, and someone
+; who already travels with the player under another framework is left to it. A party member (rejoin) and Mantella's
+; own follower (moved over to NFF by Join) pass.
+string Function JoinRefusal(nwsFollowerControllerScript akNff, Actor akActor)
+	string name = akActor.GetDisplayName()
+	If InParty(akNff, akActor)
+		Return ""
+	ElseIf IsMinor(akActor)
+		Return name + " is a child and cannot join the player's party."
+	ElseIf akActor.IsGuard()
+		Return name + " is a guard on duty and cannot leave their post to join the player's party."
+	EndIf
+	Faction jarl = Game.GetFormFromFile(0x050920, "Skyrim.esm") as Faction  ; JobJarlFaction
+	Faction steward = Game.GetFormFromFile(0x050922, "Skyrim.esm") as Faction  ; JobStewardFaction
+	If jarl && akActor.IsInFaction(jarl)
+		Return name + " rules the hold and cannot leave to join the player's party."
+	ElseIf steward && akActor.IsInFaction(steward)
+		Return name + " is the hold's steward and cannot leave their duties to join the player's party."
+	ElseIf akActor.IsPlayerTeammate() && !IsMantellaFollower(akActor)
+		Return name + " already travels with the player under another arrangement and does not need to join the party."
+	EndIf
+	Return ""
+EndFunction
+
+; Some mods clear the child flag, so the race is checked too (as the Integration Hub does).
+bool Function IsMinor(Actor akActor)
+	If akActor.IsChild()
+		Return true
+	EndIf
+	Race actorRace = akActor.GetRace()
+	Return actorRace && StringUtil.Find(MiscUtil.GetRaceEditorID(actorRace), "Child") >= 0
 EndFunction
 
 Function Join(nwsFollowerControllerScript akNff, Actor akActor)

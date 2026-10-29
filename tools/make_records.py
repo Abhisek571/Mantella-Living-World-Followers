@@ -50,8 +50,10 @@ ACTIONS = [
 ]
 for ident, name, desc, prompt, takes_source in ACTIONS:
     data = {'identifier': f'mantella_mlw_{ident}', 'name': name, 'description': desc, 'note': NOTE, 'key': name, 'enabled': True}
-    if ident != 'join':  # only party members take orders; anyone may be asked to join
+    if ident != 'join':  # only party members take orders
         data['lw_gate'] = 'follower'
+    else:  # guards are never offered join; children, Jarls and stewards are refused in game (MLWF_Main.JoinRefusal)
+        data['lw_gate'] = 'guard=0'
     if takes_source:
         data['parameters'] = SOURCE
         data['required'] = ['source']
