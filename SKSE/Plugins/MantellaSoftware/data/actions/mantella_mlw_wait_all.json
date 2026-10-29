@@ -2,7 +2,7 @@
     "identifier": "mantella_mlw_wait_all",
     "name": "EveryoneWait",
     "description": "Make the whole party wait here.",
-    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow and Wait.",
+    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow, Wait and Loot. Only offered for followers. Acts on the whole party.",
     "key": "EveryoneWait",
     "enabled": true,
     "lw_gate": "follower",

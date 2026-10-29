@@ -2,7 +2,7 @@
     "identifier": "mantella_mlw_role",
     "name": "PartyRole",
     "description": "Set follower(s) as the party's tank, healer, or no special role.",
-    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow and Wait.",
+    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow, Wait and Loot. Only offered for followers. Can be refused if the NPC does not qualify for the role.",
     "key": "PartyRole",
     "enabled": true,
     "lw_gate": "follower",

@@ -2,7 +2,7 @@
     "identifier": "mantella_mlw_join",
     "name": "JoinParty",
     "description": "Make NPC(s) join the player's party as followers.",
-    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow and Wait.",
+    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow, Wait and Loot. If the party is full, the NPC says so and does not join. Releases the NPC from Mantella's own follower first.",
     "key": "JoinParty",
     "enabled": true,
     "parameters": {

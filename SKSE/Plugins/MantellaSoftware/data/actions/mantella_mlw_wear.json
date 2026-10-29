@@ -2,7 +2,7 @@
     "identifier": "mantella_mlw_wear",
     "name": "WearThis",
     "description": "Open the trade window so the player can hand clothes to wear; the NPC keeps them as an outfit.",
-    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow and Wait.",
+    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow, Wait and Loot. Only offered for followers. Opens the trade window. Everything the NPC wears afterwards becomes their outfit for the current place; their previously stored outfit goes back into their inventory.",
     "key": "WearThis",
     "enabled": true,
     "lw_gate": "follower",

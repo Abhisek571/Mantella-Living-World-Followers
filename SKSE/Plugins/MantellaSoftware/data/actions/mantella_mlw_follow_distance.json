@@ -2,7 +2,7 @@
     "identifier": "mantella_mlw_follow_distance",
     "name": "FollowDistance",
     "description": "Set how close follower(s) walk behind the player.",
-    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow and Wait.",
+    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow, Wait and Loot. Only offered for followers.",
     "key": "FollowDistance",
     "enabled": true,
     "lw_gate": "follower",

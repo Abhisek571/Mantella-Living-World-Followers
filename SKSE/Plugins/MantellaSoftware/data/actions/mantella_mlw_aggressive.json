@@ -2,7 +2,7 @@
     "identifier": "mantella_mlw_aggressive",
     "name": "FightFreely",
     "description": "Make follower(s) fight enemies and help in fights again.",
-    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow and Wait.",
+    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow, Wait and Loot. Only offered for followers.",
     "key": "FightFreely",
     "enabled": true,
     "lw_gate": "follower",
