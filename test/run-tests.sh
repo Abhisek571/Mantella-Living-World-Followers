@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Drives the Followers scenarios over DevBench (game running, a save with the NPC in the NFF party), then prints
 # PASS/FAIL per check. The sit step needs someone at the game: look at a chair when the HUD says so.
-# usage: bash run-tests.sh [npc form] [other party member]     e.g. 0xFE1DD821 0xFE26080E (Vega, nyri in the test save)
+# usage: bash run-tests.sh [npc form] [other party member]     e.g. 0xFE1DD821 0xFE26080E (Mjoll, nyri in the test save)
 set -u
-NGVO=D:/Modlists/NGVO
+MO2=${MO2:?set MO2 to your Mod Organizer 2 instance folder}
 NPC=${1:-0xFE1DD821}
 NPC2=${2:-0xFE26080E}                     # the other party member (nyri in the test save)
 V="{\"form\":\"$NPC\"}"; P='{"form":"0x14"}'; Q='{"form":"MLWF_Quest"}'
@@ -13,7 +13,7 @@ ORDER_ATTACK=7; ORDER_BEHIND=8; ORDER_DISTANCE=9; ORDER_STYLE=10; ORDER_ROLE=11;
 pass=0; fail=0
 
 # call <script> <function> [args json] [self json]: prints the return value as JSON ("ERROR ..." on failure)
-call() { bash "$NGVO/tools/devbench-cli.sh" call "$@" 2>&1 | py -3 -I -c "import json,sys
+call() { bash "$MO2/tools/devbench-cli.sh" call "$@" 2>&1 | py -3 -I -c "import json,sys
 try:
     d=json.load(sys.stdin); print(json.dumps(d.get('returned')) if d.get('called') else 'ERROR '+str(d))
 except Exception: print('ERROR no reply')"; }
@@ -21,8 +21,8 @@ m() { call MLWF_Main "$1" "${2:-[]}" "$Q"; }       # member function of the Foll
 order() { m Order "[$1,$V,\"${2:-}\"]" >/dev/null; sleep "${3:-2}"; }
 state() { m TestState "[$V]"; }
 event() { m TestTakeEvent; }
-con() { bash "$NGVO/tools/devbench-cli.sh" exec "$1" >/dev/null 2>&1; }
-note() { bash "$NGVO/tools/devbench-cli.sh" notify "$1" >/dev/null 2>&1; echo "== $1"; }
+con() { bash "$MO2/tools/devbench-cli.sh" exec "$1" >/dev/null 2>&1; }
+note() { bash "$MO2/tools/devbench-cli.sh" notify "$1" >/dev/null 2>&1; echo "== $1"; }
 # check <label> <extended regex> <text>
 check() { if printf '%s' "$3" | grep -qiE -- "$2"; then pass=$((pass+1)); echo "   PASS $1"; else fail=$((fail+1)); echo "   FAIL $1: $3"; fi; }
 nocheck() { if printf '%s' "$3" | grep -qiE -- "$2"; then fail=$((fail+1)); echo "   FAIL $1: $3"; else pass=$((pass+1)); echo "   PASS $1"; fi; }

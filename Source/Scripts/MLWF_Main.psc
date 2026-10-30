@@ -756,7 +756,7 @@ Event OnNpcAdded(Form akActor)
 	CheckClothes(akActor as Actor)
 EndEvent
 
-; Sends "(Vega wears Steel Armor, which CHAD gave her.)" when she wears body, hand, foot or head armor the player
+; Sends "(Mjoll wears Steel Armor, which Player gave her.)" when she wears body, hand, foot or head armor the player
 ; handed over, and returns that line ("" = all her own).
 string Function CheckClothes(Actor akActor)
 	If !akActor || akActor == PlayerRef || akActor.IsDead()
