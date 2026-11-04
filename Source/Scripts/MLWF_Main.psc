@@ -502,14 +502,15 @@ Function Attack(nwsFollowerControllerScript akNff, Actor akActor, string asTarge
 EndFunction
 
 Actor Function FindTarget(nwsFollowerControllerScript akNff, Actor akActor, string asTarget)
-	Actor[] nearby = MiscUtil.ScanCellNPCs(PlayerRef, SCAN_RADIUS, None, true)
 	Actor named = None
 	Actor nearest = None
 	float nearestDistance = 0.0
+	; MiscUtil.ScanCellNPCs crashes the game in Skyrim VR.
+	ObjectReference[] nearby = PO3_SKSEFunctions.FindAllReferencesOfFormType(PlayerRef, 62, SCAN_RADIUS)
 	int i = 0
 	While i < nearby.Length
-		Actor other = nearby[i]
-		If other && other != akActor && other != PlayerRef
+		Actor other = nearby[i] as Actor
+		If other && other != akActor && other != PlayerRef && !other.IsDead()
 			bool enemy = IsEnemy(akNff, other)
 			; String comparison is case-insensitive in Papyrus. A hostile namesake wins over a friendly one.
 			If asTarget != "" && other.GetDisplayName() == asTarget && (!named || enemy)
