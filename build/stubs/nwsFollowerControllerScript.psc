@@ -37,3 +37,6 @@ Function GiveTorches(ReferenceAlias myAlias)
 EndFunction
 Function WarpAll()
 EndFunction
+Int Property outfitSwitchStyle Auto
+Function DoTaskAll(Int myVal, Int myOpt)
+EndFunction

@@ -1,11 +1,11 @@
 {
     "identifier": "mantella_mlw_wait_all",
     "name": "EveryoneWait",
-    "description": "Make the whole party wait here.",
-    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow, Wait and Loot. Only offered for followers. Acts on the whole party.",
+    "description": "Make the followers near the player wait here.",
+    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow, Wait and Loot. Only offered for members of your Nether's Follower Framework party. Acts on the followers near you (within about 30 m); followers waiting farther away stay where they are.",
     "key": "EveryoneWait",
     "enabled": true,
-    "lw_gate": "follower",
+    "lw_gate": "nff=1",
     "prompt": "If the player tells the whole party or everyone to wait or stay here, begin your response with '{key}:'",
     "allowed_games": [
         "skyrim"

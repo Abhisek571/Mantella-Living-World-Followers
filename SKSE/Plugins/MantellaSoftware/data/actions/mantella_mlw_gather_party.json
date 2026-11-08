@@ -1,11 +1,11 @@
 {
     "identifier": "mantella_mlw_gather_party",
     "name": "GatherParty",
-    "description": "Call the whole party to the player.",
-    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow, Wait and Loot. Only offered for followers. Acts on the whole party. Followers are only teleported to you if all are over 2000 units away and out of sight.",
+    "description": "Call the followers near the player to them.",
+    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow, Wait and Loot. Only offered for members of your Nether's Follower Framework party. Acts on the followers near you: those within about 30 m follow again, and a following member 2000 to 8192 units away and out of sight is moved right behind you. Followers left waiting farther away stay where they are.",
     "key": "GatherParty",
     "enabled": true,
-    "lw_gate": "follower",
+    "lw_gate": "nff=1",
     "prompt": "If the player calls the whole party or everyone to gather or come to them, begin your response with '{key}:'",
     "allowed_games": [
         "skyrim"

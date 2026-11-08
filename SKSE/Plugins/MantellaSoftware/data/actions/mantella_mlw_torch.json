@@ -2,10 +2,10 @@
     "identifier": "mantella_mlw_torch",
     "name": "CarryTorch",
     "description": "Make follower(s) carry a torch in the dark, or put torches away.",
-    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow, Wait and Loot. Only offered for followers. Refused if the NPC has no torch.",
+    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow, Wait and Loot. Only offered for members of your Nether's Follower Framework party. Refused only if neither the NPC nor the player has a torch.",
     "key": "CarryTorch",
     "enabled": true,
-    "lw_gate": "follower",
+    "lw_gate": "nff=1",
     "parameters": {
         "source": {
             "type": "array",

@@ -7,3 +7,5 @@ Faction Property nwsFF_DefaultCombat Auto
 Faction Property nwsFF_DefaultFollow Auto
 Faction Property nwsFF_NCRangeFac Auto
 Faction Property nwsFF_RoleFac Auto
+GlobalVariable Property nwsFollowerCount Auto
+GlobalVariable Property nwsFollowerMaxCount Auto

@@ -31,50 +31,50 @@ distance() { call ObjectReference GetDistance "[$P]" "$V"; }
 con "set GameHour to 12"
 m TestTakeEvent >/dev/null
 
-note "0/12 setup: the NPC is in the NFF party"
+note "0/13 setup: the NPC is in the NFF party"
 s=$(state); check "in party" 'party=TRUE' "$s"
 if ! printf '%s' "$s" | grep -qi 'party=TRUE'; then order 0 "" 10; check "joined" 'party=TRUE' "$(state)"; fi
 order 3 "" 2   # follow, in case she waits
 
-note "1/12 follow distance: near=rank 1, far=rank 2, normal=rank 0"
+note "1/13 follow distance: near=rank 1, far=rank 2, normal=rank 0"
 order $ORDER_DISTANCE near; check "near" 'range=1 ' "$(state)"
 order $ORDER_DISTANCE far; check "far" 'range=2 ' "$(state)"
 order $ORDER_DISTANCE normal; check "normal" 'range=0 ' "$(state)"
 
-note "2/12 combat style: ranged=3 (Archer), magic=6 (Wizard), melee=0 (Mercenary)"
+note "2/13 combat style: ranged=3 (Archer), magic=6 (Wizard), melee=0 (Mercenary)"
 order $ORDER_STYLE ranged; s=$(state); check "ranged" 'style=3 ' "$s"; echo "   event: $(event)"
 order $ORDER_STYLE magic; check "magic" 'style=6 ' "$(state)"
 order $ORDER_STYLE melee; check "melee" 'style=0 ' "$(state)"
 
-note "3/12 role: tank=2, healer=1 (or a refusal line), none=0"
+note "3/13 role: tank=2, healer=1 (or a refusal line), none=0"
 order $ORDER_ROLE tank; check "tank" 'role=2 ' "$(state)"
 order $ORDER_ROLE healer; s=$(state); e=$(event)
 if printf '%s' "$e" | grep -qi 'not strong enough'; then check "healer refused with a line" 'healer' "$e"; else check "healer" 'role=1 ' "$s"; fi
 order $ORDER_ROLE none; check "none" 'role=0 ' "$(state)"
 
-note "4/12 torch: off takes her torches, on gives one back (from the player if NFF stored none)"
+note "4/13 torch: off takes her torches, on gives one back (from the player if NFF stored none)"
 call ObjectReference AddItem "[$TORCH,1,true]" "$P" >/dev/null
 order $ORDER_TORCH off; check "torch off" 'torches=0 ' "$(state)"
 order $ORDER_TORCH on; check "torch on" 'torches=[1-9]' "$(state)"
 
-note "5/12 stay behind: she ends up right behind the player"
+note "5/13 stay behind: she ends up right behind the player"
 order $ORDER_BEHIND "" 2; d=$(distance); check "behind (distance $d)" '^"?([0-9]|[0-9][0-9]|[12][0-9][0-9])(\.|"|$)' "$d"   # placed 64 behind; she may walk a little after
 
-note "6/12 relax: NFF relax mode on"
+note "6/13 relax: NFF relax mode on"
 m Relax >/dev/null; sleep 1; check "relax on" 'relax=([1-9])' "$(state)"; echo "   event: $(event)"
 
-note "7/12 loot on, then off"
+note "7/13 loot on, then off"
 m Loot '[true]' >/dev/null; sleep 4; check "loot on" 'looting=TRUE' "$(state)"
 m Loot '[false]' >/dev/null; sleep 4; check "loot off" 'looting=FALSE' "$(state)"
 event >/dev/null
 
-note "8/12 attack a friendly NPC (Lydia): refused with an event line, no fight"
+note "8/13 attack a friendly NPC (Lydia): refused with an event line, no fight"
 call ObjectReference MoveTo "[$P,300.0,0.0,0.0,true]" "$LYDIA" >/dev/null; sleep 3
 order $ORDER_ATTACK Lydia 3; sleep 3; e=$(event); s=$(state)   # the refusal line comes after the target lookup
 check "refusal line" 'refuses to attack Lydia' "$e"; check "no fight" 'combat=FALSE' "$s"
 call ObjectReference MoveToMyEditorLocation '[]' "$LYDIA" >/dev/null
 
-note "9/12 attack an enemy (spawned wolf): she fights it"
+note "9/13 attack an enemy (spawned wolf): she fights it"
 wolf=$(call ObjectReference PlaceAtMe "[$WOLF,1,false,false]" "$P")
 wolf_form="{\"form\":\"$(printf '%s' "$wolf" | grep -oE '0x[0-9A-Fa-f]+' | head -1)\"}"
 if printf '%s' "$wolf" | grep -q '^ERROR\|^null'; then fail=$((fail+1)); echo "   FAIL no wolf spawned: $wolf"
@@ -86,20 +86,20 @@ else
   call Actor Kill '[null]' "$wolf" >/dev/null; sleep 3
 fi
 
-note "10/12 sit: LOOK AT A FREE CHAIR NOW (10 s)"
+note "10/13 sit: LOOK AT A FREE CHAIR NOW (10 s)"
 sleep 10; order $ORDER_SIT "" 6; s=$(state); e=$(event)
 check "sitting (or told there is no seat)" 'sit=[1-4]|no seat|taken' "$s $e"
 order 3 "" 3   # follow again
 
-note "11/12 gather: party near or in view gathers without a warp; far and out of view catches up"
-m Gather >/dev/null; sleep 2; check "near: no warp" 'gathers around' "$(event)"
+note "11/13 gather: party near gathers without a warp; a member far away (another cell) is not pulled"
+m Gather >/dev/null; sleep 2; check "near: no warp" 'gather around' "$(event)"
 call ObjectReference MoveTo "[$LYDIA,0.0,0.0,0.0,true]" "$V" >/dev/null   # Lydia's spot in Dragonsreach
-[ -n "${NPC2:-}" ] && call ObjectReference MoveTo "[$LYDIA,60.0,0.0,0.0,true]" "{\"form\":\"$NPC2\"}" >/dev/null   # the warp needs everyone away
 sleep 3
 check "moved away (distance)" '^"?[0-9]{4,}|e\+' "$(distance)"
-m Gather >/dev/null; sleep 5; check "far: catches up" 'catches up' "$(event)"; echo "   distance now: $(distance)"
+m Gather >/dev/null; sleep 5; check "far: left where she is" 'gather around' "$(event)"; check "far: still away" '^"?[0-9]{4,}|e\+' "$(distance)"
+call ObjectReference MoveTo "[$P,-100.0,0.0,0.0,true]" "$V" >/dev/null; sleep 2; order 3 "" 2   # back to the player
 
-note "12/12 clothes: own outfit = no line, given cuirass = one line naming it, given sword only = no line"
+note "12/13 clothes: own outfit = no line, given cuirass = one line naming it, given sword only = no line"
 base=$(m CheckClothes "[$V]"); event >/dev/null
 check "own outfit, no line (if this fails she already wears given clothes)" '^""$' "$base"
 oldBody=$(call Actor GetWornForm '[4]' "$V")
@@ -108,7 +108,9 @@ call ObjectReference RemoveItem "[$CUIRASS,1,true,$V]" "$P" >/dev/null; sleep 1
 call Actor EquipItem "[$CUIRASS,false,true]" "$V" >/dev/null; sleep 2
 l=$(m CheckClothes "[$V]"); check "given cuirass named" 'wears Steel Armor.*gave (her|him)' "$l"; check "event sent" 'Steel Armor' "$(event)"
 call Actor UnequipItem "[$CUIRASS,false,true]" "$V" >/dev/null
-call ObjectReference RemoveItem "[$CUIRASS,1,true,null]" "$V" >/dev/null
+call ObjectReference RemoveItem "[$CUIRASS,1,true,$P]" "$V" >/dev/null; sleep 1   # the player takes it back
+check "taken back: no longer a gift" '^false$' "$(call StorageUtil FormListHas "[$V,\"MLWF_GivenClothes\",$CUIRASS]")"
+call ObjectReference RemoveItem "[$CUIRASS,1,true,null]" "$P" >/dev/null
 [ "$oldBody" != "null" ] && call Actor EquipItem "[$oldBody,false,true]" "$V" >/dev/null
 sleep 2
 call ObjectReference AddItem "[$SWORD,1,true]" "$V" >/dev/null
@@ -116,6 +118,11 @@ call Actor EquipItem "[$SWORD,false,true]" "$V" >/dev/null; sleep 2
 l=$(m CheckClothes "[$V]"); nocheck "sword not counted" 'Iron Sword' "$l"   # equipping a weapon makes the engine re-equip her best armor, so only the sword is checked
 call ObjectReference RemoveItem "[$SWORD,1,true,null]" "$V" >/dev/null
 event >/dev/null
+
+note "13/13 party field: her Living World file says she is in NFF's party (nff=1)"
+m OnNpcAdded "[$V]" >/dev/null; sleep 1; event >/dev/null
+base_id=$(m BaseId "[$V]" | tr -d '"')
+check "nff=1 in npc/$base_id.json" '^1$' "$(call JsonUtil GetIntValue "[\"MantellaLivingWorld/npc/$base_id.json\",\"nff\",-1]")"
 
 note "tests finished: $pass passed, $fail failed"
 echo "NFF combat style, role, range and relax were changed on this save; reload it or reset them in NFF's menu."

@@ -2,10 +2,10 @@
     "identifier": "mantella_mlw_relax_here",
     "name": "RelaxHere",
     "description": "Let the whole party relax nearby while the player stays put.",
-    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow, Wait and Loot. Only offered for followers. Acts on the whole party.",
+    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow, Wait and Loot. Only offered for members of your Nether's Follower Framework party. Acts on the whole party.",
     "key": "RelaxHere",
     "enabled": true,
-    "lw_gate": "follower",
+    "lw_gate": "nff=1",
     "prompt": "If the player tells the party to relax, rest or make themselves comfortable here, begin your response with '{key}:'",
     "allowed_games": [
         "skyrim"
