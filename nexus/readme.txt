@@ -1,5 +1,5 @@
 Mantella Living World - Followers
-Version 1.1.3 by itsPigeon2000
+Version 1.2.0 by itsPigeon2000
 
 Mantella actions for Nether's Follower Framework: NPCs join or leave your party, wait, follow, stay out of fights or fight freely, attack a target, change combat style, role and follow distance, sit, carry torches, loot, and wear clothes you hand them. Everything except joining is only offered to members of your NFF party.
 

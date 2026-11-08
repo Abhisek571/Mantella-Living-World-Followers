@@ -2,7 +2,7 @@
 
 Every change to Mantella Living World - Followers. The Nexus page lists only the main changes for each version.
 
-## Unreleased
+## 1.2.0 (2026-11-09)
 
 ### New
 - Followers from Nether's Follower Framework are marked in each NPC's file, so the Integration Hub can limit follower actions to them.

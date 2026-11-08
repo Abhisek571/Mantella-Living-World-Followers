@@ -932,7 +932,7 @@ Function Gather()
 		Actor member = members[i]
 		float distance = member.GetDistance(PlayerRef)
 		; GetDistance between an interior and the world outside compares raw coordinates, so a member far away in
-		; another cell could look close and be warped over (seen live: Vega pulled out of Dragonsreach).
+		; another cell could look close and be warped over (seen live: a follower pulled out of Dragonsreach).
 		If SameSpace(member, PlayerRef) && member.GetActorValue("WaitingForPlayer") <= 0 && distance > WARP_DISTANCE && distance <= GATHER_RADIUS && !PlayerRef.HasLOS(member)
 			member.MoveTo(PlayerRef, -64.0 * Math.Sin(angle), -64.0 * Math.Cos(angle), 0.0)
 			moved += 1
