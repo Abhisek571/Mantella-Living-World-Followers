@@ -2,10 +2,10 @@
     "identifier": "mantella_mlw_combat_style",
     "name": "CombatStyle",
     "description": "Set how follower(s) fight: melee, ranged (bow) or magic.",
-    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow, Wait and Loot. Only offered for followers.",
+    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow, Wait and Loot. Only offered for members of your Nether's Follower Framework party.",
     "key": "CombatStyle",
     "enabled": true,
-    "lw_gate": "follower",
+    "lw_gate": "nff=1",
     "parameters": {
         "source": {
             "type": "array",

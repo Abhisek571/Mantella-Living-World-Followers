@@ -31,6 +31,8 @@ int Property ORDER_TORCH = 13 AutoReadOnly
 ; Enemies are looked for this far around the player; the party is fetched only when all are farther than WARP_DISTANCE.
 float Property SCAN_RADIUS = 4096.0 AutoReadOnly
 float Property WARP_DISTANCE = 2000.0 AutoReadOnly
+; Gather only moves following members within this distance; followers parked farther away stay put.
+float Property GATHER_RADIUS = 8192.0 AutoReadOnly
 
 bool busy = false
 ; Testing: the last line sent to Mantella.
@@ -124,7 +126,7 @@ EndEvent
 ; ---------------------------------------------------------------------------
 
 Event OnJoinAdvanced(Form akSpeaker, Form akConversation, int aiArguments)
-	Orders(ORDER_JOIN, ResolveSources(akSpeaker, akConversation, aiArguments))
+	Orders(ORDER_JOIN, ResolveSources(akSpeaker, akConversation, aiArguments, false))
 EndEvent
 Event OnJoinLegacy(Form akSpeaker)
 	Order(ORDER_JOIN, akSpeaker as Actor)
@@ -192,14 +194,68 @@ EndEvent
 
 ; Actions with a choice ("distance", "style", "role", "state") have no legacy handler: without the argument there
 ; is nothing to do.
+; The target is looked for once for the whole group (one scan), then each follower attacks it.
 Event OnAttackAdvanced(Form akSpeaker, Form akConversation, int aiArguments)
-	Orders(ORDER_ATTACK, ResolveSources(akSpeaker, akConversation, aiArguments), SKSE_HTTP.getString(aiArguments, "target", ""))
+	Actor[] sources = ResolveSources(akSpeaker, akConversation, aiArguments)
+	string targetName = SKSE_HTTP.getString(aiArguments, "target", "")
+	nwsFollowerControllerScript nff = Controller()
+	If !nff
+		Orders(ORDER_ATTACK, sources, targetName)
+		Return
+	EndIf
+	Actor[] members = PartyMembers(nff)
+	bool scanned = false
+	Actor target = None
+	int i = 0
+	While i < sources.Length
+		Actor source = sources[i]
+		If source && source != PlayerRef && !source.IsDead()
+			If members.Find(source) < 0
+				Order(ORDER_ATTACK, source, targetName)  ; tells the talk why someone outside the party does not attack
+			Else
+				If !scanned
+					target = FindTarget(nff, source, targetName, members)
+					scanned = true
+				EndIf
+				MLW_Hub hub = Hub()
+				If hub
+					hub.Log("followers", "attack " + targetName + " for " + source.GetDisplayName())
+				EndIf
+				AttackFound(nff, source, target, members)
+			EndIf
+		EndIf
+		i += 1
+	EndWhile
 EndEvent
 Event OnAttackLegacy(Form akSpeaker)
 	Order(ORDER_ATTACK, akSpeaker as Actor)
 EndEvent
+; NFF's "behind me" puts the follower on one spot right behind the player, so it is for one follower. A group would
+; all land on that spot (inside a wall or over a drop): they close ranks at near follow distance instead.
 Event OnBehindAdvanced(Form akSpeaker, Form akConversation, int aiArguments)
-	Orders(ORDER_BEHIND, ResolveSources(akSpeaker, akConversation, aiArguments))
+	Actor[] sources = ResolveSources(akSpeaker, akConversation, aiArguments)
+	int count = 0
+	int i = 0
+	While i < sources.Length
+		If sources[i]
+			count += 1
+		EndIf
+		i += 1
+	EndWhile
+	If count <= 1
+		Orders(ORDER_BEHIND, sources)
+		Return
+	EndIf
+	nwsFollowerControllerScript nff = Controller()
+	i = 0
+	While i < sources.Length
+		Actor source = sources[i]
+		If nff && source && source != PlayerRef && !source.IsDead() && InParty(nff, source) && source.GetActorValue("WaitingForPlayer") > 0
+			nff.FollowerFollowMe(source, 0)
+		EndIf
+		i += 1
+	EndWhile
+	Orders(ORDER_DISTANCE, sources, "near")
 EndEvent
 Event OnBehindLegacy(Form akSpeaker)
 	Order(ORDER_BEHIND, akSpeaker as Actor)
@@ -251,22 +307,31 @@ Event OnGatherLegacy(Form akSpeaker)
 	EndIf
 EndEvent
 
-; True when the speaker is a party member (in NFF's party, or a player teammate). Otherwise the NPCs are told why
-; the party-wide order was not given. Without NFF the order functions do nothing anyway.
+; True when the speaker is in NFF's party. Otherwise the NPCs are told why the party-wide order was not given: these
+; orders only move NFF's party, so a teammate under another framework (Serana, Inigo) cannot give them either.
+; Without NFF the order functions do nothing anyway.
 bool Function SpeakerInParty(Form akSpeaker)
 	Actor speaker = akSpeaker as Actor
 	nwsFollowerControllerScript nff = Controller()
 	If !nff
 		Return true
-	ElseIf speaker && speaker != PlayerRef && (InParty(nff, speaker) || speaker.IsPlayerTeammate())
+	ElseIf speaker && speaker != PlayerRef && InParty(nff, speaker)
 		Return true
 	EndIf
 	string name = "Someone"
 	If speaker
 		name = speaker.GetDisplayName()
 	EndIf
-	Tell(name + " is not in your party.", name + " is not one of the player's followers, so the party does not take orders from them.")
+	If speaker && speaker.IsPlayerTeammate()
+		Tell("", OwnArrangementLine(name))
+	Else
+		Tell(name + " is not in your party.", name + " is not one of the player's followers, so the party does not take orders from them.")
+	EndIf
 	Return false
+EndFunction
+
+string Function OwnArrangementLine(string asName)
+	Return asName + " travels with the player under their own arrangement; these party orders do not reach them."
 EndFunction
 
 Function PartyOrder(bool abWait)
@@ -278,33 +343,104 @@ Function PartyOrder(bool abWait)
 	If hub
 		hub.Log("followers", "party order, wait=" + abWait)
 	EndIf
+	; NFF task 14: wait (1) or follow (0) for party members within 2048 units only. WaitAll/FollowAll would reach
+	; every member, so followers parked at home would set off across Skyrim.
+	nff.DoTaskAll(14, abWait as int)
 	If abWait
-		nff.WaitAll()
+		Debug.Notification("The followers near you wait here.")
 	Else
-		nff.FollowAll()
+		Debug.Notification("The followers near you follow you.")
 	EndIf
 EndFunction
 
-; Turns the "source" names into actors. Falls back to the speaker when no name resolves, the same fallback
-; Mantella uses for its own actions.
-Actor[] Function ResolveSources(Form akSpeaker, Form akConversation, int aiArguments)
+; Turns the "source" names into actors. Falls back to the speaker only when no name was given (the same fallback
+; Mantella uses for its own actions). A name Mantella does not know exactly ("Mjoll" for "Mjoll the Lioness",
+; "Lydia" for "Lydia 2") is matched against the start of the names of the people in the talk; "everyone" or "all"
+; means every party member in the talk (everyone in the talk for a join, abPartyOnly false). A name that matches
+; nobody is not replaced by the speaker: the talk is told no order was given.
+Actor[] Function ResolveSources(Form akSpeaker, Form akConversation, int aiArguments, bool abPartyOnly = true)
 	Actor[] result = new Actor[10]
 	int found = 0
 	MantellaConversation conversation = akConversation as MantellaConversation
 	string[] names = SKSE_HTTP.getStringArray(aiArguments, "source")
+	If names.Length == 0 || !conversation
+		result[0] = akSpeaker as Actor
+		Return result
+	EndIf
+	string missing = ""
 	int i = 0
 	While conversation && i < names.Length && found < result.Length
-		Actor npc = conversation.GetActorByName(names[i])
-		If npc && result.Find(npc) < 0
-			result[found] = npc
-			found += 1
+		string wanted = names[i]
+		If wanted == "everyone" || wanted == "everybody" || wanted == "all" || wanted == "all of you" || wanted == "party" || wanted == "the party"
+			found = AddEveryone(conversation, result, found, abPartyOnly)
+		Else
+			Actor npc = conversation.GetActorByName(wanted)
+			If !npc
+				npc = PrefixMatch(conversation, wanted)
+			EndIf
+			If npc && result.Find(npc) < 0
+				result[found] = npc
+				found += 1
+			ElseIf !npc
+				If missing != ""
+					missing += ", "
+				EndIf
+				missing += wanted
+			EndIf
 		EndIf
 		i += 1
 	EndWhile
-	If found == 0
-		result[0] = akSpeaker as Actor
+	If missing != ""
+		If found == 0
+			Tell("", "Nobody here is called " + missing + "; no order was given.")
+		Else
+			Tell("", "Nobody here is called " + missing + "; that part of the order was not given.")
+		EndIf
+	ElseIf found == 0
+		Tell("", "Nobody in the conversation is in the player's party; no order was given.")
 	EndIf
 	Return result
+EndFunction
+
+; The one person in the talk whose name starts with asName as a whole word; None when nobody or more than one does.
+Actor Function PrefixMatch(MantellaConversation akConversation, string asName)
+	int nameLength = StringUtil.GetLength(asName)
+	If nameLength == 0
+		Return None
+	EndIf
+	Actor match = None
+	int i = 0
+	int count = akConversation.CountActorsInConversation()
+	While i < count
+		Actor member = akConversation.GetActorInConversationByIndex(i)
+		If member && member != PlayerRef
+			string memberName = member.GetDisplayName()
+			If StringUtil.Find(memberName, asName) == 0 && (StringUtil.GetLength(memberName) == nameLength || StringUtil.Substring(memberName, nameLength, 1) == " ")
+				If match && match != member
+					Return None
+				EndIf
+				match = member
+			EndIf
+		EndIf
+		i += 1
+	EndWhile
+	Return match
+EndFunction
+
+; Adds every NPC in the talk (only NFF party members when abPartyOnly) to akResult; returns the new count.
+int Function AddEveryone(MantellaConversation akConversation, Actor[] akResult, int aiFound, bool abPartyOnly)
+	nwsFollowerControllerScript nff = Controller()
+	int i = 0
+	int count = akConversation.CountActorsInConversation()
+	While i < count && aiFound < akResult.Length
+		Actor member = akConversation.GetActorInConversationByIndex(i)
+		If member && member != PlayerRef && akResult.Find(member) < 0 && (!abPartyOnly || !nff || InParty(nff, member))
+			akResult[aiFound] = member
+			aiFound += 1
+		EndIf
+		i += 1
+	EndWhile
+	Return aiFound
 EndFunction
 
 Function Orders(int aiOrder, Actor[] akActors, string asOption = "")
@@ -342,14 +478,25 @@ Function Order(int aiOrder, Actor akActor, string asOption = "")
 			Tell(name + " cannot join your party.", refusal)
 			Return
 		EndIf
+		; A full party is refused at once: NFF would ignore the recruit and Join would wait out its timeout.
+		If !InParty(nff, akActor) && PartyFull(nff)
+			Tell(name + " cannot join: the party is full.", name + " cannot join: the player's party is full.")
+			Return
+		EndIf
 		Lock()
 		Join(nff, akActor)
 		Unlock()
+		WriteNffField(nff, akActor)
 		RefreshLivingWorldNpc(akActor)
 	ElseIf !InParty(nff, akActor)
-		Tell(name + " is not in your party.", name + " is not one of the player's followers.")
+		If akActor.IsPlayerTeammate()
+			Tell("", OwnArrangementLine(name))
+		Else
+			Tell(name + " is not in your party.", name + " is not one of the player's followers.")
+		EndIf
 	ElseIf aiOrder == ORDER_LEAVE
 		nff.RemoveFollower(akActor, 0, 0)
+		WriteNffField(nff, akActor)
 		RefreshLivingWorldNpc(akActor)
 	ElseIf aiOrder == ORDER_WAIT
 		nff.FollowerWaitHere(akActor, 0, 0)
@@ -382,6 +529,33 @@ Function Order(int aiOrder, Actor akActor, string asOption = "")
 	EndIf
 EndFunction
 
+bool Function PartyFull(nwsFollowerControllerScript akNff)
+	nwsFollowerVariableScript vars = akNff.varScript
+	Return vars && vars.nwsFollowerCount && vars.nwsFollowerMaxCount && vars.nwsFollowerCount.GetValue() >= vars.nwsFollowerMaxCount.GetValue()
+EndFunction
+
+; Writes "nff" (1 = in NFF's party) into the NPC's Living World file (npc/<base id>.json, the Integration Hub's
+; file). The party actions are gated on it, so a teammate under another framework is not offered orders that only
+; move NFF's party.
+Function WriteNffField(nwsFollowerControllerScript akNff, Actor akActor)
+	string path = "MantellaLivingWorld/npc/" + BaseId(akActor) + ".json"
+	JsonUtil.SetIntValue(path, "nff", (akNff && InParty(akNff, akActor)) as int)
+	JsonUtil.Save(path)
+EndFunction
+
+; The base record's FormID as its last 6 hex digits, the Integration Hub's npc file name.
+string Function BaseId(Actor akActor)
+	string digits = "0123456789ABCDEF"
+	int value = akActor.GetActorBase().GetFormID()
+	string out = ""
+	int i = 2
+	While i < 8
+		out += StringUtil.GetNthChar(digits, Math.LogicalAnd(Math.RightShift(value, 28 - i * 4), 15))
+		i += 1
+	EndWhile
+	Return out
+EndFunction
+
 ; After a join or leave mid-talk: the Integration Hub rewrites this NPC's file, so follower actions appear or go.
 Function RefreshLivingWorldNpc(Actor akActor)
 	int handle = ModEvent.Create("MLW_RefreshNpc")
@@ -392,7 +566,7 @@ Function RefreshLivingWorldNpc(Actor akActor)
 EndFunction
 
 ; Why this NPC may not join, as the line Mantella is told; "" when she may. NFF itself only refuses the dead
-; (RecruitFollower), so the checks are ours: children, guards, the Jarl and the steward keep their place, and someone
+; (RecruitFollower), so the checks are ours: children, guards, the Jarl, the steward and the player's house steward keep their place, and someone
 ; who already travels with the player under another framework is left to it. A party member (rejoin) and Mantella's
 ; own follower (moved over to NFF by Join) pass.
 string Function JoinRefusal(nwsFollowerControllerScript akNff, Actor akActor)
@@ -410,6 +584,10 @@ string Function JoinRefusal(nwsFollowerControllerScript akNff, Actor akActor)
 		Return name + " rules the hold and cannot leave to join the player's party."
 	ElseIf steward && akActor.IsInFaction(steward)
 		Return name + " is the hold's steward and cannot leave their duties to join the player's party."
+	EndIf
+	Faction houseSteward = Game.GetFormFromFile(0x00308E, "HearthFires.esm") as Faction  ; BYOHHouseStewardFaction
+	If houseSteward && akActor.IsInFaction(houseSteward)
+		Return name + " runs " + PlayerRef.GetDisplayName() + "'s house and stays there."
 	ElseIf akActor.IsPlayerTeammate() && !IsMantellaFollower(akActor)
 		Return name + " already travels with the player under another arrangement and does not need to join the party."
 	EndIf
@@ -479,11 +657,16 @@ Function Behave(nwsFollowerControllerScript akNff, Actor akActor, bool abPassive
 	akActor.EvaluatePackage()
 EndFunction
 
-; Attack: the enemy named in "target", else the actor the player points at, else the nearest enemy. Someone who is no
+; Attack: the enemy named in "target", else the enemy the player points at, else the nearest enemy. Someone who is no
 ; enemy (not hostile to the player and not fighting the party) is refused, and the NPCs are told why.
 Function Attack(nwsFollowerControllerScript akNff, Actor akActor, string asTarget)
+	Actor[] members = PartyMembers(akNff)
+	AttackFound(akNff, akActor, FindTarget(akNff, akActor, asTarget, members), members)
+EndFunction
+
+; akMembers: the party, taken once (PartyMembers), so the scan does not ask NFF about every actor nearby.
+Function AttackFound(nwsFollowerControllerScript akNff, Actor akActor, Actor target, Actor[] akMembers)
 	string name = akActor.GetDisplayName()
-	Actor target = FindTarget(akNff, akActor, asTarget)
 	If !target
 		Tell(name + " sees no enemy to attack.", name + " sees no enemy to attack.")
 		Return
@@ -493,7 +676,7 @@ Function Attack(nwsFollowerControllerScript akNff, Actor akActor, string asTarge
 		Tell(targetName + " is already dead.", targetName + " is already dead; " + name + " has nobody to attack.")
 		Return
 	EndIf
-	If !IsEnemy(akNff, target)
+	If !IsEnemy(target, akMembers)
 		Tell(name + " will not attack " + targetName + ".", name + " refuses to attack " + targetName + ", who is not an enemy.")
 		Return
 	EndIf
@@ -501,7 +684,7 @@ Function Attack(nwsFollowerControllerScript akNff, Actor akActor, string asTarge
 	Debug.Notification(name + " attacks " + targetName + ".")
 EndFunction
 
-Actor Function FindTarget(nwsFollowerControllerScript akNff, Actor akActor, string asTarget)
+Actor Function FindTarget(nwsFollowerControllerScript akNff, Actor akActor, string asTarget, Actor[] akMembers)
 	Actor named = None
 	Actor nearest = None
 	float nearestDistance = 0.0
@@ -511,7 +694,7 @@ Actor Function FindTarget(nwsFollowerControllerScript akNff, Actor akActor, stri
 	While i < nearby.Length
 		Actor other = nearby[i] as Actor
 		If other && other != akActor && other != PlayerRef && !other.IsDead()
-			bool enemy = IsEnemy(akNff, other)
+			bool enemy = IsEnemy(other, akMembers)
 			; String comparison is case-insensitive in Papyrus. A hostile namesake wins over a friendly one.
 			If asTarget != "" && other.GetDisplayName() == asTarget && (!named || enemy)
 				named = other
@@ -526,24 +709,40 @@ Actor Function FindTarget(nwsFollowerControllerScript akNff, Actor akActor, stri
 		EndIf
 		i += 1
 	EndWhile
+	; The reference scan misses persistent NPCs that have moved (PO3 FindAllReferencesOfFormType): look for the named
+	; target among the people in Mantella's conversation too.
+	If !named && asTarget != ""
+		MantellaConversation talk = Game.GetFormFromFile(0x03D41A, "Mantella.esp") as MantellaConversation
+		If talk && talk.IsRunning()
+			int j = talk.CountActorsInConversation()
+			While j > 0 && !named
+				j -= 1
+				Actor inTalk = talk.GetActorInConversationByIndex(j)
+				If inTalk && inTalk != akActor && inTalk != PlayerRef && !inTalk.IsDead() && inTalk.GetDisplayName() == asTarget
+					named = inTalk
+				EndIf
+			EndWhile
+		EndIf
+	EndIf
 	If named
 		Return named
 	EndIf
 	Actor aimed = Game.GetCurrentCrosshairRef() as Actor
-	If aimed && aimed != akActor && aimed != PlayerRef && !aimed.IsDead()
+	If aimed && aimed != akActor && aimed != PlayerRef && !aimed.IsDead() && IsEnemy(aimed, akMembers)
 		Return aimed
 	EndIf
 	Return nearest
 EndFunction
 
-bool Function IsEnemy(nwsFollowerControllerScript akNff, Actor akActor)
-	If akActor == PlayerRef || akActor.IsDead() || akActor.IsPlayerTeammate() || InParty(akNff, akActor)
+; akMembers: NFF's party (PartyMembers), taken once by the caller.
+bool Function IsEnemy(Actor akActor, Actor[] akMembers)
+	If akActor == PlayerRef || akActor.IsDead() || akActor.IsPlayerTeammate() || akMembers.Find(akActor) >= 0
 		Return false
 	ElseIf akActor.IsHostileToActor(PlayerRef)
 		Return true
 	EndIf
 	Actor fighting = akActor.GetCombatTarget()
-	Return fighting && (fighting == PlayerRef || InParty(akNff, fighting))
+	Return fighting && (fighting == PlayerRef || akMembers.Find(fighting) >= 0)
 EndFunction
 
 ; NFF's follow range: faction rank 1 close, 0 medium, 2 far (NFF menu "Set Follow Range").
@@ -702,8 +901,19 @@ Function Loot(bool abOn)
 	EndIf
 EndFunction
 
-; Everyone follows. Only when every member is out of sight and farther than WARP_DISTANCE does NFF move them to the
-; player, so nobody pops into view.
+; The followers near the player follow (NFF task 14: within 2048 units; followers parked far away stay where they
+; are). A following member farther than WARP_DISTANCE but within GATHER_RADIUS and out of sight is moved right behind
+; the player, so nobody pops into view. NFF's WarpAll is never used: it would pull every member, parked ones too.
+; True when both are in the same interior cell, or both outside in the same worldspace.
+bool Function SameSpace(ObjectReference akA, ObjectReference akB)
+	If akA.IsInInterior() != akB.IsInInterior()
+		Return false
+	ElseIf akA.IsInInterior()
+		Return akA.GetParentCell() == akB.GetParentCell()
+	EndIf
+	Return akA.GetWorldSpace() == akB.GetWorldSpace()
+EndFunction
+
 Function Gather()
 	nwsFollowerControllerScript nff = Controller()
 	If !nff
@@ -714,18 +924,25 @@ Function Gather()
 		Tell("You have no party.", "The player has no party to gather.")
 		Return
 	EndIf
-	nff.FollowAll()
-	bool allAway = true
+	nff.DoTaskAll(14, 0)
+	float angle = PlayerRef.GetAngleZ()
+	int moved = 0
 	int i = 0
-	While i < members.Length && members[i] && allAway
-		allAway = members[i].GetDistance(PlayerRef) > WARP_DISTANCE && !PlayerRef.HasLOS(members[i])
+	While i < members.Length && members[i]
+		Actor member = members[i]
+		float distance = member.GetDistance(PlayerRef)
+		; GetDistance between an interior and the world outside compares raw coordinates, so a member far away in
+		; another cell could look close and be warped over (seen live: a follower pulled out of Dragonsreach).
+		If SameSpace(member, PlayerRef) && member.GetActorValue("WaitingForPlayer") <= 0 && distance > WARP_DISTANCE && distance <= GATHER_RADIUS && !PlayerRef.HasLOS(member)
+			member.MoveTo(PlayerRef, -64.0 * Math.Sin(angle), -64.0 * Math.Cos(angle), 0.0)
+			moved += 1
+		EndIf
 		i += 1
 	EndWhile
-	If allAway
-		nff.WarpAll()
-		Tell("", "The party catches up with the player.")
+	If moved > 0
+		Tell("", "The followers near the player catch up with them.")
 	Else
-		Tell("", "The party gathers around the player.")
+		Tell("", "The followers near the player gather around them.")
 	EndIf
 EndFunction
 
@@ -754,7 +971,11 @@ EndFunction
 ; ---------------------------------------------------------------------------
 
 Event OnNpcAdded(Form akActor)
-	CheckClothes(akActor as Actor)
+	Actor npc = akActor as Actor
+	If npc && npc != PlayerRef
+		WriteNffField(Controller(), npc)
+	EndIf
+	CheckClothes(npc)
 EndEvent
 
 ; Sends "(Mjoll wears Steel Armor, which Player gave her.)" when she wears body, hand, foot or head armor the player
@@ -779,7 +1000,7 @@ string Function GivenClothesLine(Actor akActor)
 	If !(hasNffOutfit || akActor.IsPlayerTeammate() || (nff && InParty(nff, akActor)) || akActor.GetRelationshipRank(PlayerRef) >= 3)
 		Return ""
 	EndIf
-	; Given = it once left the player's inventory (MLWF_GiftsAlias). Many follower mods dress their NPC from the
+	; Given = the player once handed it to this NPC (MLWF_GiftsAlias). Many follower mods dress their NPC from the
 	; inventory with no outfit record at all, so the outfit can't tell what is her own.
 	; Head (30), hair or hood (31), body (32), hands (33), feet (37). Weapons and jewelry don't count.
 	int[] masks = new int[5]
@@ -789,6 +1010,9 @@ string Function GivenClothesLine(Actor akActor)
 	masks[3] = 0x00000008
 	masks[4] = 0x00000080
 	Form[] seen = new Form[5]
+	; Pieces of her own outfit record are hers even if the player once carried the same item for her (Lydia's
+	; Steel Armor after she was used as a pack mule).
+	Outfit own = akActor.GetLeveledActorBase().GetOutfit()
 	string names = ""
 	int count = 0
 	int i = 0
@@ -796,7 +1020,7 @@ string Function GivenClothesLine(Actor akActor)
 		Form item = akActor.GetWornForm(masks[i])
 		If item && seen.Find(item) < 0
 			seen[i] = item
-			If StorageUtil.FormListHas(None, "MLWF_GivenClothes", item)
+			If StorageUtil.FormListHas(akActor, "MLWF_GivenClothes", item) && !InOutfit(own, item)
 				If count > 0
 					names += " and "
 				EndIf
@@ -810,10 +1034,24 @@ string Function GivenClothesLine(Actor akActor)
 		Return ""
 	EndIf
 	string pronoun = "him"
-	If akActor.GetActorBase().GetSex() == 1
+	If akActor.GetLeveledActorBase().GetSex() == 1  ; the leveled base: a templated NPC's sex comes from the template
 		pronoun = "her"
 	EndIf
 	Return "(" + akActor.GetDisplayName() + " wears " + names + ", which " + PlayerRef.GetDisplayName() + " gave " + pronoun + ".)"
+EndFunction
+
+bool Function InOutfit(Outfit akOutfit, Form akItem)
+	If !akOutfit
+		Return false
+	EndIf
+	int i = akOutfit.GetNumParts()
+	While i > 0
+		i -= 1
+		If akOutfit.GetNthPart(i) == akItem
+			Return true
+		EndIf
+	EndWhile
+	Return false
 EndFunction
 
 
@@ -824,12 +1062,24 @@ EndFunction
 
 Function OpenForClothes(Actor akActor)
 	If wearActor
+		Tell("", "The player is already handing clothes to " + wearActor.GetDisplayName() + ".")
 		Return
 	EndIf
 	wearActor = akActor
 	SnapshotArmor(akActor)
 	RegisterForMenu("ContainerMenu")
 	akActor.OpenInventory(true)
+	; If the trade window never opens, the latch would turn the next container the player closes into this trade.
+	int tries = 0
+	While wearActor == akActor && !UI.IsMenuOpen("ContainerMenu") && tries < 8
+		Utility.WaitMenuMode(0.25)
+		tries += 1
+	EndWhile
+	If wearActor == akActor && !UI.IsMenuOpen("ContainerMenu")
+		UnregisterForMenu("ContainerMenu")
+		wearActor = None
+		Tell("", akActor.GetDisplayName() + " could not open the trade window right now.")
+	EndIf
 EndFunction
 
 Event OnMenuClose(string asMenuName)
@@ -863,7 +1113,11 @@ Event OnMenuClose(string asMenuName)
 		nwsFollowerSetsScript sets = Sets()
 		int situation = 0
 		If sets
-			sets.CheckPlayerLoc()
+			; Switch style 1 flips NFF's own toggle on every check, and NFF checks again while storing the outfit.
+			nwsFollowerControllerScript nff = Controller()
+			If !nff || nff.outfitSwitchStyle != 1
+				sets.CheckPlayerLoc()
+			EndIf
 			situation = sets.lastLocType
 			If situation < 0 || situation > 2
 				situation = 0
@@ -871,8 +1125,10 @@ Event OnMenuClose(string asMenuName)
 		EndIf
 		If SaveOutfit(npc, situation, WornArmor(npc), true)
 			Debug.Notification(npc.GetDisplayName() + " now wears this as the " + SituationName(situation) + " outfit.")
+			Tell("", npc.GetDisplayName() + " put on the clothes the player gave: " + names + ".")
+		Else
+			Tell("", npc.GetDisplayName() + " put on the clothes, but Nether's Follower Framework could not store them as an outfit.")
 		EndIf
-		Tell("", npc.GetDisplayName() + " put on the clothes the player gave: " + names + ".")
 	EndIf
 	If hub
 		hub.Unquiet("followers", 10.0)

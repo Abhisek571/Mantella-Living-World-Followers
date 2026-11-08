@@ -1,13 +1,14 @@
 Mantella Living World - Followers
-Version 1.0.0 by itsPigeon2000
+Version 1.2.0 by itsPigeon2000
 
-Mantella actions for Nether's Follower Framework: NPCs join or leave your party, wait, follow, stay out of fights or fight freely, attack a target, change combat style, role and follow distance, sit, carry torches, loot, and wear clothes you hand them. Everything except joining is only offered to followers.
+Mantella actions for Nether's Follower Framework: NPCs join or leave your party, wait, follow, stay out of fights or fight freely, attack a target, change combat style, role and follow distance, sit, carry torches, loot, and wear clothes you hand them. Everything except joining is only offered to members of your NFF party.
 
 Requirements
 - Mantella Living World - Integration Hub
 - Mantella - Direct AI Connect (needed by the Hub)
 - Mantella 0.14
 - Nether's Follower Framework
+- powerofthree's Papyrus Extender
 - PapyrusUtil and SKSE
 If the Hub or NFF is missing, nothing warns you at load; the actions just do nothing.
 Combat style, party role, follow distance, carry torch and party loot need Mantella's Advanced Actions on; the other orders work without it.

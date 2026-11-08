@@ -2,10 +2,10 @@
     "identifier": "mantella_mlw_sit_there",
     "name": "SitThere",
     "description": "Make a follower sit on the seat the player points at and wait there.",
-    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow, Wait and Loot. Only offered for followers. Sits on the seat you point at; refused if the seat is taken.",
+    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow, Wait and Loot. Only offered for members of your Nether's Follower Framework party. Sits on the seat you point at; refused if the seat is taken.",
     "key": "SitThere",
     "enabled": true,
-    "lw_gate": "follower",
+    "lw_gate": "nff=1",
     "parameters": {
         "source": {
             "type": "array",

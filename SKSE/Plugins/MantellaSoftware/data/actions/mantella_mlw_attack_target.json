@@ -2,10 +2,10 @@
     "identifier": "mantella_mlw_attack_target",
     "name": "AttackTarget",
     "description": "Make follower(s) attack an enemy: the one named, else the one the player points at, else the nearest.",
-    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow, Wait and Loot. Only offered for followers. Refused if there is no enemy or the target is not an enemy.",
+    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow, Wait and Loot. Only offered for members of your Nether's Follower Framework party. Refused if there is no enemy or the target is not an enemy.",
     "key": "AttackTarget",
     "enabled": true,
-    "lw_gate": "follower",
+    "lw_gate": "nff=1",
     "parameters": {
         "source": {
             "type": "array",
