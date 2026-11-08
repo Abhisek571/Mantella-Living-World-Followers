@@ -709,6 +709,21 @@ Actor Function FindTarget(nwsFollowerControllerScript akNff, Actor akActor, stri
 		EndIf
 		i += 1
 	EndWhile
+	; The reference scan misses persistent NPCs that have moved (PO3 FindAllReferencesOfFormType): look for the named
+	; target among the people in Mantella's conversation too.
+	If !named && asTarget != ""
+		MantellaConversation talk = Game.GetFormFromFile(0x03D41A, "Mantella.esp") as MantellaConversation
+		If talk && talk.IsRunning()
+			int j = talk.CountActorsInConversation()
+			While j > 0 && !named
+				j -= 1
+				Actor inTalk = talk.GetActorInConversationByIndex(j)
+				If inTalk && inTalk != akActor && inTalk != PlayerRef && !inTalk.IsDead() && inTalk.GetDisplayName() == asTarget
+					named = inTalk
+				EndIf
+			EndWhile
+		EndIf
+	EndIf
 	If named
 		Return named
 	EndIf
@@ -889,6 +904,16 @@ EndFunction
 ; The followers near the player follow (NFF task 14: within 2048 units; followers parked far away stay where they
 ; are). A following member farther than WARP_DISTANCE but within GATHER_RADIUS and out of sight is moved right behind
 ; the player, so nobody pops into view. NFF's WarpAll is never used: it would pull every member, parked ones too.
+; True when both are in the same interior cell, or both outside in the same worldspace.
+bool Function SameSpace(ObjectReference akA, ObjectReference akB)
+	If akA.IsInInterior() != akB.IsInInterior()
+		Return false
+	ElseIf akA.IsInInterior()
+		Return akA.GetParentCell() == akB.GetParentCell()
+	EndIf
+	Return akA.GetWorldSpace() == akB.GetWorldSpace()
+EndFunction
+
 Function Gather()
 	nwsFollowerControllerScript nff = Controller()
 	If !nff
@@ -906,7 +931,9 @@ Function Gather()
 	While i < members.Length && members[i]
 		Actor member = members[i]
 		float distance = member.GetDistance(PlayerRef)
-		If member.GetActorValue("WaitingForPlayer") <= 0 && distance > WARP_DISTANCE && distance <= GATHER_RADIUS && !PlayerRef.HasLOS(member)
+		; GetDistance between an interior and the world outside compares raw coordinates, so a member far away in
+		; another cell could look close and be warped over (seen live: Vega pulled out of Dragonsreach).
+		If SameSpace(member, PlayerRef) && member.GetActorValue("WaitingForPlayer") <= 0 && distance > WARP_DISTANCE && distance <= GATHER_RADIUS && !PlayerRef.HasLOS(member)
 			member.MoveTo(PlayerRef, -64.0 * Math.Sin(angle), -64.0 * Math.Cos(angle), 0.0)
 			moved += 1
 		EndIf
