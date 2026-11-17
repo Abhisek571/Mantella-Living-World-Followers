@@ -2,6 +2,17 @@
 
 Every change to Mantella Living World - Followers. The Nexus page lists only the main changes for each version.
 
+## Unreleased
+
+### Changed
+- The 18 follower orders are now two actions with the order inside: FollowerOrder (wait, follow, stay behind, sit, leave, wear, fight, passive, attack, follow distance, combat style, role, torch) and PartyOrder (everyone wait or follow, gather, relax, loot on or off). Every order works as before, and the model is sent far less text on every reply. JoinParty stays its own action.
+- With Mantella's Advanced Actions switched off, follower orders can no longer be triggered by keyword: both actions need the order as a parameter, so turn Advanced Actions on in Mantella. Before, most orders worked without it.
+- The old separate order actions still work for one version, so a talk running across the update is not broken. When updating by hand, delete the old action files (mantella_mlw_wait.json and the others) or let your mod manager replace the folder.
+
+### Fixed
+- Every order now tells the NPC (an event line) and you (a short line on screen) whether it worked, including follow distance and combat style, which said nothing; an order that cannot apply says why.
+- Events are registered again only on older saves, not at every talk start; item events skip everything that is not clothing first.
+
 ## 1.2.0 (2026-11-09)
 
 ### New

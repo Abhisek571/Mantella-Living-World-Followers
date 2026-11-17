@@ -1,0 +1,36 @@
+{
+    "identifier": "mantella_mlw_party_order",
+    "name": "PartyOrder",
+    "description": "Give the whole party an order.",
+    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow, Wait and Loot. Only offered for members of your Nether's Follower Framework party. One action for the party-wide orders (it replaces EveryoneWait, EveryoneFollow, GatherParty, RelaxHere and PartyLoot). Needs Advanced Actions on in Mantella. wait and follow act on the followers near you (within about 30 m); gather also moves a following member 2000 to 8192 units away and out of sight right behind you. Followers waiting farther away stay put.",
+    "key": "PartyOrder",
+    "enabled": true,
+    "lw_gate": "nff=1",
+    "parameters": {
+        "order": {
+            "type": "string",
+            "enum": [
+                "follow",
+                "wait",
+                "gather",
+                "relax",
+                "loot_on",
+                "loot_off"
+            ],
+            "description": "follow or wait: everyone near the player; gather: come to the player; relax: rest nearby while the player stays; loot_on or loot_off: loot bodies and containers nearby."
+        }
+    },
+    "required": [
+        "order"
+    ],
+    "prompt": "If the player gives the whole party an order, begin your response with '{key}:'",
+    "allowed_games": [
+        "skyrim"
+    ],
+    "requires_response": false,
+    "is-interrupting": false,
+    "allow_repeat": false,
+    "one-on-one": true,
+    "multi-npc": true,
+    "radiant": false
+}

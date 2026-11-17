@@ -1,0 +1,63 @@
+{
+    "identifier": "mantella_mlw_order",
+    "name": "FollowerOrder",
+    "description": "Give the named followers an order.",
+    "note": "Needs Mantella Living World - Followers and Nether's Follower Framework. Turn off Mantella's own Follow, Unfollow, Wait and Loot. Only offered for members of your Nether's Follower Framework party. One action for every order to named followers (it replaces WaitHere, FollowMe, StayBehind, SitThere, LeaveParty, WearThis, StayPassive, FightFreely, AttackTarget, FollowDistance, CombatStyle, PartyRole and CarryTorch). Needs Advanced Actions on in Mantella. stay_behind: one follower steps right behind you, a group closes ranks at near follow distance. sit: the seat you point at, refused if taken. wear: opens the trade window; what the NPC wears afterwards becomes their outfit for the current place. attack: refused if there is no enemy or the target is not one. role: refused if the NPC does not qualify. torch: refused only if neither of you has one.",
+    "key": "FollowerOrder",
+    "enabled": true,
+    "lw_gate": "nff=1",
+    "parameters": {
+        "source": {
+            "type": "array",
+            "description": "The followers it applies to.",
+            "items": {
+                "type": "string"
+            },
+            "scope": "conversation"
+        },
+        "order": {
+            "type": "string",
+            "enum": [
+                "follow",
+                "wait",
+                "stay_behind",
+                "sit",
+                "leave",
+                "wear",
+                "fight",
+                "passive",
+                "attack",
+                "distance_near",
+                "distance_normal",
+                "distance_far",
+                "style_melee",
+                "style_ranged",
+                "style_magic",
+                "role_tank",
+                "role_healer",
+                "role_none",
+                "torch_on",
+                "torch_off"
+            ],
+            "description": "follow: come along again; wait: here; stay_behind: behind the player; sit: on the seat the player points at; leave: the party (also by own choice); wear: clothes the player hands over, as an outfit; fight/passive: join fights or not; attack: target; distance_, style_, role_, torch_: set it."
+        },
+        "target": {
+            "type": "string",
+            "description": "For attack: the enemy (empty: the one the player points at)."
+        }
+    },
+    "required": [
+        "source",
+        "order"
+    ],
+    "prompt": "If you follow the player and they give you an order, begin your response with '{key}:'",
+    "allowed_games": [
+        "skyrim"
+    ],
+    "requires_response": false,
+    "is-interrupting": false,
+    "allow_repeat": false,
+    "one-on-one": true,
+    "multi-npc": true,
+    "radiant": false
+}

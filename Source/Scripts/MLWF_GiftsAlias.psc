@@ -7,8 +7,11 @@ as her own choice.}
 string Property KEY_GIVEN = "MLWF_GivenClothes" AutoReadOnly
 
 Event OnItemRemoved(Form akBaseItem, int aiItemCount, ObjectReference akItemReference, ObjectReference akDestContainer)
+	If !(akBaseItem as Armor)  ; most items: nothing to do, before any game call
+		Return
+	EndIf
 	Actor npc = akDestContainer as Actor
-	If npc && akBaseItem as Armor && npc != Game.GetPlayer() && !npc.IsDead()
+	If npc && npc != Game.GetPlayer() && !npc.IsDead()
 		StorageUtil.FormListAdd(npc, KEY_GIVEN, akBaseItem, false)
 	EndIf
 EndEvent
