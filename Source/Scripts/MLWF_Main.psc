@@ -35,6 +35,7 @@ float Property WARP_DISTANCE = 2000.0 AutoReadOnly
 float Property GATHER_RADIUS = 8192.0 AutoReadOnly
 
 bool busy = false
+float busyAt = 0.0  ; real time the lock was taken
 ; Testing: the last line sent to Mantella.
 string lastEvent = ""
 ; The NPC whose inventory is open for "wear this", and the armor she had before.
@@ -1462,11 +1463,19 @@ Function Tell(string asNotification, string asEvent)
 	EndIf
 EndFunction
 
+; A holder needs a few seconds at most (Join waits out JOIN_TIMEOUT). A lock older than LOCK_TIMEOUT, or taken in an
+; earlier session (real time starts at 0 again: a save made inside the lock whose stack was dropped by an update) is
+; stale and taken over, so Join and "wear this" never hang for good.
+float Property LOCK_TIMEOUT = 30.0 AutoReadOnly
+
 Function Lock()
-	While busy
+	float now = Utility.GetCurrentRealTime()
+	While busy && now >= busyAt && now - busyAt < LOCK_TIMEOUT
 		Utility.WaitMenuMode(0.25)
+		now = Utility.GetCurrentRealTime()
 	EndWhile
 	busy = true
+	busyAt = Utility.GetCurrentRealTime()
 EndFunction
 
 Function Unlock()

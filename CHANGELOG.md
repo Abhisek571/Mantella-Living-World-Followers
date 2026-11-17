@@ -10,6 +10,7 @@ Every change to Mantella Living World - Followers. The Nexus page lists only the
 - The old separate order actions still work for one version, so a talk running across the update is not broken. When updating by hand, delete the old action files (mantella_mlw_wait.json and the others) or let your mod manager replace the folder.
 
 ### Fixed
+- Joining the party and "wear this" can no longer hang for good after a save made at the wrong moment.
 - Every order now tells the NPC (an event line) and you (a short line on screen) whether it worked, including follow distance and combat style, which said nothing; an order that cannot apply says why.
 - Events are registered again only on older saves, not at every talk start; item events skip everything that is not clothing first.
 

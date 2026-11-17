@@ -132,5 +132,11 @@ for fn, text in (('FollowDistance', '" now follows the player at " + asDistance 
 for fn, text in (('FollowDistance', 'which follow distance'), ('CombatStyle', 'which fighting style'), ('Role', 'which role'), ('Torch', 'should carry a torch')):
     check(f'{fn}: an unknown choice is refused with a line', text in function(fn))
 
+
+# The script lock: a stale lock (older than LOCK_TIMEOUT, or from an earlier session) is taken over, never waited on
+# for good (a save made inside Join or "wear this" whose stack an update dropped once hung every later Join).
+lock = function('Lock')
+check('Lock: waits at most LOCK_TIMEOUT and treats a lock from an earlier session as stale',
+      'LOCK_TIMEOUT' in lock and 'now >= busyAt' in lock and 'busyAt = Utility.GetCurrentRealTime()' in lock, lock)
 print(f'{fails} failed')
 sys.exit(1 if fails else 0)
