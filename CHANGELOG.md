@@ -2,7 +2,7 @@
 
 Every change to Mantella Living World - Followers. The Nexus page lists only the main changes for each version.
 
-## Unreleased
+## 1.2.1 (2026-11-18)
 
 ### Changed
 - The 18 follower orders are now two actions with the order inside: FollowerOrder (wait, follow, stay behind, sit, leave, wear, fight, passive, attack, follow distance, combat style, role, torch) and PartyOrder (everyone wait or follow, gather, relax, loot on or off). Every order works as before, and the model is sent far less text on every reply. JoinParty stays its own action.
