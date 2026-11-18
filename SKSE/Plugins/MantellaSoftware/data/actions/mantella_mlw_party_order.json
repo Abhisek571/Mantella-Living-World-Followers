@@ -17,7 +17,7 @@
                 "loot_on",
                 "loot_off"
             ],
-            "description": "follow or wait: everyone near the player; gather: come to the player; relax: rest nearby while the player stays; loot_on or loot_off: loot bodies and containers nearby."
+            "description": "follow or wait: everyone near the player (follow also ends relax); gather: come to the player; relax: rest nearby while the player stays; loot_on or loot_off: loot bodies and containers nearby."
         }
     },
     "required": [

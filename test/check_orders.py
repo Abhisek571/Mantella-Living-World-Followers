@@ -138,5 +138,23 @@ for fn, text in (('FollowDistance', 'which follow distance'), ('CombatStyle', 'w
 lock = function('Lock')
 check('Lock: waits at most LOCK_TIMEOUT and treats a lock from an earlier session as stale',
       'LOCK_TIMEOUT' in lock and 'now >= busyAt' in lock and 'busyAt = Utility.GetCurrentRealTime()' in lock, lock)
+# Audit fixes: armor snapshot sized to the item count, party aliases read once, follow ends relax, unchanged nff not saved.
+snap = function('SnapshotArmor')
+check('SnapshotArmor: arrays sized to the item count, not a fixed 128',
+      'Utility.CreateFormArray(size)' in snap and 'Utility.CreateIntArray(size)' in snap and 'new Form[128]' not in snap and 'n < size' in snap, snap)
+check('SnapshotArmor: size at least 1 (no items) and capped', 'If size < 1' in snap and 'size > 4096' in snap, snap)
+m = re.search(r'^Actor\[\] Function PartyMembers\(.*?^EndFunction', SRC, re.M | re.S)
+members = m.group(0) if m else ''
+check('PartyMembers: does not ask NFF again per alias (InParty)', 'InParty(' not in members and re.search(r'If member\s*$', members, re.M), members)
+check('PartyMembers: reads the aliases NFF searches (max count + 2, at most 12)', 'nwsFollowerMaxCount.GetValue() as int) + 2' in members, members)
+check('Hub report: lists PartyMembers, no second alias walk', 'PartyMembers(nff)' in event('OnReportRequest') and 'InParty(' not in event('OnReportRequest'))
+porder = function('PartyOrder')
+check('PartyOrder follow: turns relax off only when it is on',
+      'nwsAllowSandbox.GetValue() >= 1.0' in porder and 'nff.ToggleSandbox()' in porder and porder.index('If abWait') < porder.index('nff.ToggleSandbox()'), porder)
+check('PartyOrder follow: the relax-off line is told back', 'no longer relax when the player stays put' in porder, porder)
+check('PartyOrder action: follow says it ends relax', 'follow also ends relax' in party['parameters']['order']['description'])
+nffw = function('WriteNffField')
+check('WriteNffField: skips the write when nff is unchanged',
+      'JsonUtil.GetIntValue(path, "nff", -1) == value' in nffw and nffw.index('== value') < nffw.index('JsonUtil.Save(path)'), nffw)
 print(f'{fails} failed')
 sys.exit(1 if fails else 0)

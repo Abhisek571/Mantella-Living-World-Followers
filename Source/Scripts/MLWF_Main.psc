@@ -108,21 +108,11 @@ Event OnReportRequest()
 		hub.ReportAdd("followers", "Nether's Follower Framework not found")
 		Return
 	EndIf
-	; NFF keeps its followers in the vanilla follower quest's aliases.
-	Quest followers = Game.GetFormFromFile(0x0750BA, "Skyrim.esm") as Quest
+	Actor[] members = PartyMembers(nff)
 	int shown = 0
-	int i = 0
-	While followers && i < 12
-		ReferenceAlias slot = followers.GetAlias(i) as ReferenceAlias
-		Actor member = None
-		If slot
-			member = slot.GetActorReference()
-		EndIf
-		If member && InParty(nff, member)
-			hub.ReportAdd("followers", member.GetDisplayName() + ": " + TestState(member))
-			shown += 1
-		EndIf
-		i += 1
+	While shown < members.Length && members[shown]
+		hub.ReportAdd("followers", members[shown].GetDisplayName() + ": " + TestState(members[shown]))
+		shown += 1
 	EndWhile
 	If shown == 0
 		hub.ReportAdd("followers", "no party members")
@@ -431,6 +421,10 @@ Function PartyOrder(bool abWait)
 	nff.DoTaskAll(14, abWait as int)
 	If abWait
 		Tell("The followers near you wait here.", "The followers near the player wait here.")
+	ElseIf nff.varScript && nff.varScript.nwsAllowSandbox && nff.varScript.nwsAllowSandbox.GetValue() >= 1.0
+		; "relax" turned NFF's relax mode on; following again turns it off.
+		nff.ToggleSandbox()
+		Tell("The followers near you follow you and stop relaxing.", "The followers near the player follow them and no longer relax when the player stays put.")
 	Else
 		Tell("The followers near you follow you.", "The followers near the player follow them.")
 	EndIf
@@ -623,7 +617,11 @@ EndFunction
 ; move NFF's party.
 Function WriteNffField(nwsFollowerControllerScript akNff, Actor akActor)
 	string path = "MantellaLivingWorld/npc/" + BaseId(akActor) + ".json"
-	JsonUtil.SetIntValue(path, "nff", (akNff && InParty(akNff, akActor)) as int)
+	int value = (akNff && InParty(akNff, akActor)) as int
+	If JsonUtil.GetIntValue(path, "nff", -1) == value
+		Return  ; unchanged: no write
+	EndIf
+	JsonUtil.SetIntValue(path, "nff", value)
 	JsonUtil.Save(path)
 EndFunction
 
@@ -1055,17 +1053,25 @@ Function Gather()
 	EndIf
 EndFunction
 
-; Every NFF party member (NFF keeps them in the vanilla follower quest's aliases).
+; Every NFF party member (NFF keeps them in the vanilla follower quest's aliases). Reads the same aliases NFF's own
+; SearchAlias does (its max follower count, at most 10, plus 2), so a filled one is a member without asking NFF again.
 Actor[] Function PartyMembers(nwsFollowerControllerScript akNff)
 	Actor[] result = new Actor[12]
 	Quest followers = Game.GetFormFromFile(0x0750BA, "Skyrim.esm") as Quest
+	int slots = 12
+	If akNff && akNff.varScript && akNff.varScript.nwsFollowerMaxCount
+		slots = (akNff.varScript.nwsFollowerMaxCount.GetValue() as int) + 2
+		If slots > 12
+			slots = 12
+		EndIf
+	EndIf
 	int n = 0
 	int i = 0
-	While followers && i < 12
+	While followers && i < slots
 		ReferenceAlias slot = followers.GetAlias(i) as ReferenceAlias
 		If slot
 			Actor member = slot.GetActorReference()
-			If member && InParty(akNff, member)
+			If member
 				result[n] = member
 				n += 1
 			EndIf
@@ -1252,13 +1258,20 @@ Event OnMenuClose(string asMenuName)
 	Unlock()
 EndEvent
 
+; Sized to the NPC's item count (an NPC can carry more than 128 kinds of armor); at least 1, at most 4096.
 Function SnapshotArmor(Actor akActor)
-	wearForms = new Form[128]
-	wearCounts = new int[128]
+	int total = akActor.GetNumItems()
+	int size = total
+	If size < 1
+		size = 1
+	ElseIf size > 4096
+		size = 4096
+	EndIf
+	wearForms = Utility.CreateFormArray(size)
+	wearCounts = Utility.CreateIntArray(size)
 	int n = 0
 	int i = 0
-	int total = akActor.GetNumItems()
-	While i < total && n < 128
+	While i < total && n < size
 		Form item = akActor.GetNthForm(i)
 		If item as Armor
 			wearForms[n] = item
