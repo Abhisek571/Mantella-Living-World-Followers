@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Drives the Followers scenarios over DevBench (game running, a save with the NPC in the NFF party), then prints
 # PASS/FAIL per check. The sit step needs someone at the game: look at a chair when the HUD says so.
-# usage: bash run-tests.sh [npc form] [other party member]     e.g. 0xFE1DD821 0xFE26080E (Mjoll, nyri in the test save)
+# usage: bash run-tests.sh [npc form] [other party member]     e.g. 0xFE1DD821 0xFE26080E (Mjoll and a second follower in the test save)
 set -u
 MO2=${MO2:?set MO2 to your Mod Organizer 2 instance folder}
 NPC=${1:-0xFE1DD821}
-NPC2=${2:-0xFE26080E}                     # the other party member (nyri in the test save)
+NPC2=${2:-0xFE26080E}                     # the other party member (a second follower in the test save)
 V="{\"form\":\"$NPC\"}"; P='{"form":"0x14"}'; Q='{"form":"MLWF_Quest"}'
 LYDIA='{"form":"0xA2C94"}'                     # HousecarlWhiterunRef: a friendly NPC who is not an enemy
 WOLF='{"form":"0x23ABE"}'; TORCH='{"form":"0x1D4EC"}'; CUIRASS='{"form":"0x13952"}'; SWORD='{"form":"0x12EB7"}'
