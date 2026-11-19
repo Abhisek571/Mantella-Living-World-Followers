@@ -2,6 +2,11 @@
 
 Every change to Mantella Living World - Followers. The Nexus page lists only the main changes for each version.
 
+## Unreleased
+
+### Changed
+- Code cleanup: repeated script code moved into small shared functions. No change in game behaviour.
+
 ## 1.2.1 (2026-11-18)
 
 ### Changed

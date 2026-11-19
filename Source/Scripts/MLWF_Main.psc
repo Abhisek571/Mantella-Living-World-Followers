@@ -120,15 +120,11 @@ Event OnReportRequest()
 EndEvent
 
 Event OnConversationStarted()
-	If StorageUtil.GetIntValue(None, "MLW_TimingOn", 0) == 1  ; speed testing (off by default): one stage-time row
-		MiscUtil.WriteToFile("Data/SKSE/Plugins/StorageUtilData/MantellaLivingWorld/timing_game.csv", StorageUtil.GetIntValue(None, "MLW_TimingTalk", 0) + "," + Utility.GetCurrentRealTime() + ",MLWF_Main,OnConversationStarted_start,\n", true, false)
-	EndIf
+	TimingRow("OnConversationStarted_start")
 	If registeredVersion != REGISTER_VERSION
 		Register()
 	EndIf
-	If StorageUtil.GetIntValue(None, "MLW_TimingOn", 0) == 1  ; speed testing (off by default): one stage-time row
-		MiscUtil.WriteToFile("Data/SKSE/Plugins/StorageUtilData/MantellaLivingWorld/timing_game.csv", StorageUtil.GetIntValue(None, "MLW_TimingTalk", 0) + "," + Utility.GetCurrentRealTime() + ",MLWF_Main,OnConversationStarted_end,\n", true, false)
-	EndIf
+	TimingRow("OnConversationStarted_end")
 EndEvent
 
 ; ---------------------------------------------------------------------------
@@ -306,20 +302,12 @@ EndEvent
 ; all land on that spot (inside a wall or over a drop): they close ranks at near follow distance instead.
 Event OnBehindAdvanced(Form akSpeaker, Form akConversation, int aiArguments)
 	Actor[] sources = ResolveSources(akSpeaker, akConversation, aiArguments)
-	int count = 0
-	int i = 0
-	While i < sources.Length
-		If sources[i]
-			count += 1
-		EndIf
-		i += 1
-	EndWhile
-	If count <= 1
+	If CountActors(sources) <= 1
 		Orders(ORDER_BEHIND, sources)
 		Return
 	EndIf
 	nwsFollowerControllerScript nff = Controller()
-	i = 0
+	int i = 0
 	While i < sources.Length
 		Actor source = sources[i]
 		If nff && source && source != PlayerRef && !source.IsDead() && InParty(nff, source) && source.GetActorValue("WaitingForPlayer") > 0
@@ -518,6 +506,19 @@ int Function AddEveryone(MantellaConversation akConversation, Actor[] akResult, 
 		i += 1
 	EndWhile
 	Return aiFound
+EndFunction
+
+; How many entries of akActors are filled.
+int Function CountActors(Actor[] akActors)
+	int count = 0
+	int i = 0
+	While i < akActors.Length
+		If akActors[i]
+			count += 1
+		EndIf
+		i += 1
+	EndWhile
+	Return count
 EndFunction
 
 Function Orders(int aiOrder, Actor[] akActors, string asOption = "")
@@ -731,12 +732,13 @@ Function Behave(nwsFollowerControllerScript akNff, Actor akActor, bool abPassive
 	If assistFac
 		akActor.SetFactionRank(assistFac, assistance)
 	EndIf
+	string name = akActor.GetDisplayName()
 	If abPassive
 		akActor.StopCombat()
 		akActor.StopCombatAlarm()
-		Tell(akActor.GetDisplayName() + " stays out of fights.", akActor.GetDisplayName() + " now stays out of fights.")
+		Tell(name + " stays out of fights.", name + " now stays out of fights.")
 	Else
-		Tell(akActor.GetDisplayName() + " fights freely.", akActor.GetDisplayName() + " now fights freely and helps the party.")
+		Tell(name + " fights freely.", name + " now fights freely and helps the party.")
 	EndIf
 	akActor.EvaluatePackage()
 EndFunction
@@ -1086,17 +1088,13 @@ EndFunction
 ; ---------------------------------------------------------------------------
 
 Event OnNpcAdded(Form akActor)
-	If StorageUtil.GetIntValue(None, "MLW_TimingOn", 0) == 1  ; speed testing (off by default): one stage-time row
-		MiscUtil.WriteToFile("Data/SKSE/Plugins/StorageUtilData/MantellaLivingWorld/timing_game.csv", StorageUtil.GetIntValue(None, "MLW_TimingTalk", 0) + "," + Utility.GetCurrentRealTime() + ",MLWF_Main,OnNpcAdded_start,\n", true, false)
-	EndIf
+	TimingRow("OnNpcAdded_start")
 	Actor npc = akActor as Actor
 	If npc && npc != PlayerRef
 		WriteNffField(Controller(), npc)
 	EndIf
 	CheckClothes(npc)
-	If StorageUtil.GetIntValue(None, "MLW_TimingOn", 0) == 1  ; speed testing (off by default): one stage-time row
-		MiscUtil.WriteToFile("Data/SKSE/Plugins/StorageUtilData/MantellaLivingWorld/timing_game.csv", StorageUtil.GetIntValue(None, "MLW_TimingTalk", 0) + "," + Utility.GetCurrentRealTime() + ",MLWF_Main,OnNpcAdded_end,\n", true, false)
-	EndIf
+	TimingRow("OnNpcAdded_end")
 EndEvent
 
 ; Sends "(Mjoll wears Steel Armor, which Player gave her.)" when she wears body, hand, foot or head armor the player
@@ -1438,8 +1436,13 @@ bool Function InParty(nwsFollowerControllerScript akNff, Actor akActor)
 	Return akNff.SearchAlias(akActor, 1) != None
 EndFunction
 
+; Mantella's own follower faction (None without Mantella).
+Faction Function MantellaFollowingFaction()
+	Return Game.GetFormFromFile(0x003806, "Mantella.esp") as Faction
+EndFunction
+
 bool Function IsMantellaFollower(Actor akActor)
-	Faction following = Game.GetFormFromFile(0x003806, "Mantella.esp") as Faction
+	Faction following = MantellaFollowingFaction()
 	Return following && akActor.IsInFaction(following)
 EndFunction
 
@@ -1448,7 +1451,7 @@ Function ReleaseFromMantella(Actor akActor)
 	If !IsMantellaFollower(akActor)
 		Return
 	EndIf
-	Faction following = Game.GetFormFromFile(0x003806, "Mantella.esp") as Faction
+	Faction following = MantellaFollowingFaction()
 	Quest followerQuest = Game.GetFormFromFile(0x021211, "Mantella.esp") as Quest
 	akActor.RemoveFromFaction(following)
 	akActor.SetPlayerTeammate(false)
@@ -1508,6 +1511,13 @@ string Function TestState(Actor akActor)
 		text += " range=" + akActor.GetFactionRank(vars.nwsFF_NCRangeFac) + " style=" + akActor.GetFactionRank(vars.nwsFF_CSFac) + " role=" + akActor.GetFactionRank(vars.nwsFF_RoleFac) + " torches=" + akActor.GetItemCount(vars.Torch01) + " relax=" + vars.nwsAllowSandbox.GetValue()
 	EndIf
 	Return text + " looting=" + nff.QueryLooting() + " combat=" + akActor.IsInCombat() + " sit=" + akActor.GetSitState()
+EndFunction
+
+; Speed testing (off by default): one stage-time row for this script.
+Function TimingRow(string asStage)
+	If StorageUtil.GetIntValue(None, "MLW_TimingOn", 0) == 1
+		MiscUtil.WriteToFile("Data/SKSE/Plugins/StorageUtilData/MantellaLivingWorld/timing_game.csv", StorageUtil.GetIntValue(None, "MLW_TimingTalk", 0) + "," + Utility.GetCurrentRealTime() + ",MLWF_Main," + asStage + ",\n", true, false)
+	EndIf
 EndFunction
 
 ; Testing: the last line sent to Mantella; forgets it.

@@ -12,7 +12,8 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ACTIONS = os.path.join(ROOT, 'SKSE', 'Plugins', 'MantellaSoftware', 'data', 'actions')
-SRC = open(os.path.join(ROOT, 'Source', 'Scripts', 'MLWF_Main.psc'), encoding='utf-8').read()
+with open(os.path.join(ROOT, 'Source', 'Scripts', 'MLWF_Main.psc'), encoding='utf-8') as source:
+    SRC = source.read()
 fails = 0
 
 
@@ -27,13 +28,25 @@ def event(name):
     return m.group(0) if m else ''
 
 
+def function(name, returns=''):
+    """The source of a Papyrus function; returns: its return type (e.g. 'Actor[]'), '' for none."""
+    prefix = re.escape(returns + ' ') if returns else ''
+    m = re.search(r'^' + prefix + r'Function ' + name + r'\(.*?^EndFunction', SRC, re.M | re.S)
+    return m.group(0) if m else ''
+
+
+def load_json(path):
+    with open(path, encoding='utf-8') as f:
+        return json.load(f)
+
+
 def branch(body, test):
     """The lines run when the If/ElseIf with this test holds (up to the next ElseIf/Else/EndIf at that level)."""
     m = re.search(r'(?:If|ElseIf) ' + re.escape(test) + r'\n(.*?)\n\t(?:ElseIf|Else|EndIf)', body, re.S)
     return m.group(1) if m else ''
 
 
-files = {f: json.load(open(os.path.join(ACTIONS, f), encoding='utf-8')) for f in os.listdir(ACTIONS) if f.endswith('.json')}
+files = {f: load_json(os.path.join(ACTIONS, f)) for f in os.listdir(ACTIONS) if f.endswith('.json')}
 check('action files: JoinParty, FollowerOrder, PartyOrder', sorted(d['name'] for d in files.values()) == ['FollowerOrder', 'JoinParty', 'PartyOrder'],
       sorted(d['name'] for d in files.values()))
 order = files.get('mantella_mlw_order.json', {})
@@ -96,11 +109,6 @@ check('no action file left for them', not any(f'mantella_mlw_{o}.json' in files 
 
 # Live test 5: style_melee and distance_near gave no event line, so neither the NPC nor the player knew they applied.
 # Every order function tells its result (an event line, and a HUD line where something changed) and every refusal.
-def function(name):
-    m = re.search(r'^Function ' + name + r'\(.*?^EndFunction', SRC, re.M | re.S)
-    return m.group(0) if m else ''
-
-
 ORDER_FUNCS = ['Order', 'PartyOrder', 'Join', 'Behave', 'AttackFound', 'FollowDistance', 'CombatStyle', 'Role', 'Sit', 'Torch',
                'Relax', 'Loot', 'Gather']
 for fn in ORDER_FUNCS:
@@ -143,8 +151,7 @@ snap = function('SnapshotArmor')
 check('SnapshotArmor: arrays sized to the item count, not a fixed 128',
       'Utility.CreateFormArray(size)' in snap and 'Utility.CreateIntArray(size)' in snap and 'new Form[128]' not in snap and 'n < size' in snap, snap)
 check('SnapshotArmor: size at least 1 (no items) and capped', 'If size < 1' in snap and 'size > 4096' in snap, snap)
-m = re.search(r'^Actor\[\] Function PartyMembers\(.*?^EndFunction', SRC, re.M | re.S)
-members = m.group(0) if m else ''
+members = function('PartyMembers', returns='Actor[]')
 check('PartyMembers: does not ask NFF again per alias (InParty)', 'InParty(' not in members and re.search(r'If member\s*$', members, re.M), members)
 check('PartyMembers: reads the aliases NFF searches (max count + 2, at most 12)', 'nwsFollowerMaxCount.GetValue() as int) + 2' in members, members)
 check('Hub report: lists PartyMembers, no second alias walk', 'PartyMembers(nff)' in event('OnReportRequest') and 'InParty(' not in event('OnReportRequest'))
